@@ -162,6 +162,49 @@
     justify-content: flex-end;
 }
 
+/* 加载状态：loading 条 + 正在思考与时间同一行 */
+.loading-state {
+    align-self: flex-start;
+}
+
+.loading-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.loading-bar::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, #1e88e5, #4fc3f7);
+    border-radius: 2px;
+    animation: loading-progress 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-progress {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(150%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.loading-state .message-info {
+    margin-top: 0;
+}
+
+.message-info-time {
+    margin-left: 2px;
+}
+
 
 /* 输入区域 */
 

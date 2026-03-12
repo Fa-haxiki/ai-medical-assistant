@@ -47,7 +47,7 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
-// 获取对话历史的异步Action
+// 获取对话历史的异步Action（404 视为空历史，不报错）
 export const fetchHistory = createAsyncThunk(
   'chat/fetchHistory',
   async (conversationId: string, { rejectWithValue }) => {
@@ -57,6 +57,9 @@ export const fetchHistory = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return { history: [], conversation_id: conversationId };
+      }
       if (axios.isAxiosError(error) && error.response) {
         return rejectWithValue(error.response.data);
       }

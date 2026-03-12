@@ -1,0 +1,115 @@
+.knowledge-upload-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f8fbfd 0%, #eef5ff 100%);
+}
+
+.knowledge-upload-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #0f172a;
+}
+
+.knowledge-upload-header p {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.knowledge-upload-card {
+  margin-top: 18px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.file-input-row input[type='file'] {
+  width: 100%;
+}
+
+.file-info {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.upload-button {
+  margin-top: 4px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1e88e5, #0d47a1);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, opacity 0.1s;
+}
+
+.upload-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.upload-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+}
+
+.tips {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #64748b;
+  text-align: left;
+}
+
+.tips p {
+  margin: 0;
+  text-align: left;
+}
+
+.tips ul {
+  padding-left: 18px;
+  margin: 4px 0 0;
+  text-align: left;
+}
+
+.result-message {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.result-message.success {
+  background-color: #ecfdf3;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.result-message.error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+@media (max-width: 768px) {
+  .knowledge-upload-container {
+    padding: 12px;
+  }
+
+  .knowledge-upload-card {
+    padding: 14px;
+  }
+}
+

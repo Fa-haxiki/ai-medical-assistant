@@ -21,6 +21,99 @@ interface ChatResponse {
   conversationId: string
 }
 
+// 提取为模块级组件，确保流式/首次回答与历史记录均走同一 Markdown 渲染路径
+function MarkdownContent({ content }: { content: string | unknown }) {
+  const safeContent = React.useMemo(() => {
+    if (typeof content === 'string') return content
+    if (content === null || content === undefined) return ''
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === 'string') return item
+          if (item && typeof item === 'object' && 'text' in item) return (item as { text: string }).text
+          return JSON.stringify(item)
+        })
+        .join('\n')
+    }
+    if (typeof content === 'object') {
+      if ('text' in content) return String((content as { text: unknown }).text)
+      if ('content' in content) return String((content as { content: unknown }).content)
+      return JSON.stringify(content)
+    }
+    return String(content)
+  }, [content])
+
+  return (
+    <div className="markdown-content">
+      <ReactMarkdown rehypePlugins={[rehypeSanitize]} remarkPlugins={[remarkGfm]}>
+        {safeContent}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+// 消息列表：用 React.memo 包裹，仅在 messages / isLoading 变化时重渲染，避免输入框 input 变化触发列表重渲染
+const ChatMessageList = React.memo(function ChatMessageList({
+  messages,
+  isLoading,
+  messagesEndRef,
+}: {
+  messages: Message[]
+  isLoading: boolean
+  messagesEndRef: React.RefObject<HTMLDivElement | null>
+}) {
+  console.log('render', messages)
+  return (
+    <>
+      {messages.map((message, index) => (
+        <div key={index} className={`message ${message.role}`}>
+          <div className="message-bubble">
+            {message.image_url && (
+              <div className="message-image-container">
+                <img
+                  src={message.image_url}
+                  alt="用户上传的图片"
+                  className="message-image"
+                  onClick={() => window.open(message.image_url, '_blank')}
+                />
+              </div>
+            )}
+            {message.role === 'assistant' ? (
+              <MarkdownContent content={message.content ?? ''} />
+            ) : (
+              message.content
+            )}
+          </div>
+          <div className="message-info">
+            {message.role === 'user'
+              ? '您'
+              : message.role === 'system'
+              ? '系统消息'
+              : 'AI医疗助手'}
+            ·
+            {new Date(message.timestamp || '').toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </div>
+        </div>
+      ))}
+      {isLoading && (
+        <div className="message assistant loading-state">
+          <div className="loading-bar" aria-hidden="true" />
+          <div className="message-info">
+            AI医疗助手 · 正在思考... ·{' '}
+            <span className="message-info-time">
+              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
+    </>
+  )
+})
+
 const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -237,7 +330,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       // 添加一个临时的助手消息占位符
       const assistantMessage: Message = {
         role: 'assistant',
-        content: '',
+        content: '正在思考...',
         timestamp: new Date().toISOString(),
         isTemporary: true
       }
@@ -416,34 +509,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
                 // 更新当前流式内容
                 setCurrentStreamContent((prev) => {
                   const newContent = prev + token;
-                  console.log(`更新后的完整内容(长度: ${newContent.length}): "${newContent.slice(-50)}..."`);
                   
                   // 使用函数式更新确保我们总是基于最新状态更新消息
-                  // 使用setTimeout把UI更新操作延迟到下一个事件循环，避免React批处理
-                  setTimeout(() => {
-                    setMessages((prevMessages) => {
-                      // 找到临时消息或者最后一条助手消息
-                      const assistantIndex = prevMessages.findIndex(
-                        (msg) => msg.isTemporary || 
-                        (msg.role === 'assistant' && prevMessages.indexOf(msg) === prevMessages.length - 1)
-                      );
-                      
-                      if (assistantIndex !== -1) {
-                        console.log(`找到助手消息索引: ${assistantIndex}, 更新内容`);
-                        const updatedMessages = [...prevMessages];
-                        updatedMessages[assistantIndex] = {
-                          ...updatedMessages[assistantIndex],
-                          content: newContent,
-                          role: 'assistant',
-                          isTemporary: false
-                        };
-                        return updatedMessages;
-                      }
-                      
-                      console.warn('未找到要更新的助手消息');
-                      return prevMessages;
-                    });
-                  }, 0);
+                  setMessages((prevMessages) => {
+                    // 找到临时消息或者最后一条助手消息
+                    const assistantIndex = prevMessages.findIndex(
+                      (msg) => msg.isTemporary || 
+                      (msg.role === 'assistant' && prevMessages.indexOf(msg) === prevMessages.length - 1)
+                    );
+                    
+                    if (assistantIndex !== -1) {
+                      const updatedMessages = [...prevMessages];
+                      updatedMessages[assistantIndex] = {
+                        ...updatedMessages[assistantIndex],
+                        content: newContent,
+                        role: 'assistant',
+                        isTemporary: false
+                      };
+                      return updatedMessages;
+                    }
+                    
+                    console.warn('未找到要更新的助手消息');
+                    return prevMessages;
+                  });
                   
                   return newContent;
                 });
@@ -569,46 +657,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
     })
   }
 
-  // Markdown渲染组件
-  const MarkdownContent = ({ content }: { content: string | any }) => {
-    // 确保内容是字符串类型
-    const safeContent = React.useMemo(() => {
-      if (typeof content === 'string') {
-        return content
-      } else if (content === null || content === undefined) {
-        return ''
-      } else if (Array.isArray(content)) {
-        // 如果是数组，尝试找到文本内容并连接
-        return content
-          .map((item) => {
-            if (typeof item === 'string') return item
-            if (item && typeof item === 'object' && 'text' in item)
-              return item.text
-            return JSON.stringify(item)
-          })
-          .join('\n')
-      } else if (typeof content === 'object') {
-        // 如果是对象，尝试提取文本内容或转为JSON字符串
-        if ('text' in content) return String(content.text)
-        if ('content' in content) return String(content.content)
-        return JSON.stringify(content)
-      }
-      // 其他类型尝试转换为字符串
-      return String(content)
-    }, [content])
-
-    return (
-      <div className="markdown-content">
-        <ReactMarkdown
-          rehypePlugins={[rehypeSanitize]}
-          remarkPlugins={[remarkGfm]}
-        >
-          {safeContent}
-        </ReactMarkdown>
-      </div>
-    )
-  }
-
   // 检查消息是否是文生图请求
   const isTextToImageRequest = (message: string): boolean => {
     const imageGenerationKeywords = [
@@ -664,71 +712,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
 
   return (
     <div className="chat-container">
-      <div className="header">
-        <div className="title">AI医疗助手</div>
-        <div className="actions">
-          <div className="stream-toggle">
-            {/* <label className="toggle-label">
-              <input 
-                type="checkbox" 
-                checked={useStreamResponse}
-                onChange={(e) => setUseStreamResponse(e.target.checked)}
-                disabled={isLoading}
-              />
-              <span>流式响应</span>
-            </label> */}
-          </div>
-        </div>
-      </div>
-
       <div className="messages-container">
-        {/* 显示之前的消息 */}
-        {messages.map((message, index) => (
-          <div key={index} className={`message ${message.role}`}>
-            <div className="message-bubble">
-              {/* 如果消息中包含图片，显示图片 */}
-              {message.image_url && (
-                <div className="message-image-container">
-                  <img
-                    src={message.image_url}
-                    alt="用户上传的图片"
-                    className="message-image"
-                    onClick={() => window.open(message.image_url, '_blank')}
-                  />
-                </div>
-              )}
-
-              {/* 显示消息内容 */}
-              {message.role === 'assistant' ? (
-                <MarkdownContent content={message.content} />
-              ) : (
-                message.content
-              )}
-            </div>
-            <div className="message-info">
-              {message.role === 'user'
-                ? '您'
-                : message.role === 'system'
-                ? '系统消息'
-                : 'AI医疗助手'}
-              ·
-              {new Date(message.timestamp || '').toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-          </div>
-        ))}
-
-        {/* 显示加载状态 */}
-        {isLoading && (
-          <div className="message assistant">
-            <div className="message-info">AI医疗助手 · 正在思考...</div>
-          </div>
-        )}
-
-        {/* 用于自动滚动的引用元素 */}
-        <div ref={messagesEndRef} />
+        <ChatMessageList
+          messages={messages}
+          isLoading={isLoading}
+          messagesEndRef={messagesEndRef}
+        />
       </div>
 
       {/* 图片预览区域 */}

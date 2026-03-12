@@ -242,146 +242,119 @@ export async function sendMultiModalJsonMessage(
   }
 }
 
-// 发送流式消息
+// 发送流式消息：单次 POST，后端直接返回 SSE 流，避免 GET 会话 id 不一致
 export async function sendStreamMessage(
-  message: string, 
+  message: string,
   conversationId?: string,
   chatHistory?: any[],
   onTokenReceived?: (token: string) => void,
-  onImageReceived?: (imageUrl: string) => void
-): Promise<{ content: string, conversationId: string, image_url?: string }> {
-  return new Promise((resolve, reject) => {
-    try {
-      console.log(`发送流式消息: '${message}', conversationId: ${conversationId || '新会话'}, 历史消息数: ${chatHistory?.length || 0}`);
-      
-      // 记录收到的内容
-      let receivedContent = '';
-      let receivedConversationId = conversationId || '';
-      
-      // 构建请求URL，包含消息和会话ID
-      const params = new URLSearchParams();
-      if (conversationId) {
-        params.append('conversation_id', conversationId);
-      }
-      
-      // 使用axios发送包含消息内容和聊天历史的POST请求
-      const request: ChatRequest = {
-        message,
-        chat_history: chatHistory || []
-      };
-      
-      console.log('准备发送流式请求，数据:', JSON.stringify(request, null, 2));
-      
-      // 先发送POST请求包含完整数据
-      axios.post(`${API_BASE_URL}/chat/stream`, request, {
-        params: conversationId ? { conversation_id: conversationId } : {},
-        headers: { 'Content-Type': 'application/json' }
-      }).catch(error => {
-        console.error('初始请求发送失败:', error);
-        // 继续处理，因为我们主要关注EventSource连接
-      });
-      
-      // 构建事件源URL，使用相同的会话ID
-      let eventSourceUrl = `${API_BASE_URL}/chat/stream`;
-      if (conversationId) {
-        eventSourceUrl += `?conversation_id=${conversationId}`;
-      }
-      
-      console.log(`建立EventSource连接: ${eventSourceUrl}`);
-      
-      // 创建EventSource用于接收流式响应
-      const eventSource = new EventSource(eventSourceUrl);
-      
-      // 处理接收到的消息
-      eventSource.onmessage = (event: MessageEvent) => {
-        try {
-          console.log(`收到消息事件 (长度:${event.data?.length || 0}):`, event.data);
-          
-          // 检查事件数据是否为空
-          if (!event.data) {
-            console.warn('收到空消息事件，跳过处理');
-            return;
-          }
-          
-          // 字符串数据直接作为token
-          const token = event.data;
-          receivedContent += token;
-          
-          // 调用回调函数更新UI
-          if (onTokenReceived) {
-            console.log(`调用回调函数更新UI - token: ${token}`);
-            onTokenReceived(token);
-          } else {
-            console.warn('未提供token回调函数，UI可能不会更新');
-          }
-        } catch (error) {
-          console.error('处理消息事件失败:', error);
-        }
-      };
-      
-      // 处理完成事件
-      eventSource.addEventListener('done', (event: Event) => {
-        try {
-          const messageEvent = event as MessageEvent;
-          console.log('收到完成事件:', messageEvent.data);
-          
-          // 尝试解析数据
-          let data: { conversation_id?: string; image_url?: string } = {};
+  _onImageReceived?: (imageUrl: string) => void
+): Promise<{ content: string; conversationId: string; image_url?: string }> {
+  let receivedContent = '';
+  let receivedConversationId = conversationId || '';
+
+  const url = new URL(`${API_BASE_URL}/chat/stream`);
+  if (conversationId) url.searchParams.set('conversation_id', conversationId);
+
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, chat_history: chatHistory || [] }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`流式请求失败: ${res.status}`);
+  }
+  if (!res.body) {
+    throw new Error('无响应体');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let currentEvent = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim();
+      } else if (line.startsWith('data:') && currentEvent) {
+        const raw = line.slice(5); // " data" 开头，后面是实际内容
+        // 对于 message 事件，保留模型原始输出（包括换行），只去掉前导空格
+        const data =
+          currentEvent === 'message'
+            ? raw.replace(/^ /, '')
+            : raw.trim();
+        if (currentEvent === 'message') {
+          receivedContent += data;
+          onTokenReceived?.(data);
+        } else if (currentEvent === 'done') {
           try {
-            data = JSON.parse(messageEvent.data);
-            console.log('解析完成事件数据成功:', data);
-          } catch (parseError) {
-            console.warn('完成事件JSON解析失败，使用空对象:', parseError);
-            // 尝试记录原始数据以便调试
-            console.log('原始数据:', messageEvent.data);
-          }
-          
-          if (data && data.conversation_id) {
-            receivedConversationId = data.conversation_id;
-            console.log(`获取到会话ID: ${receivedConversationId}`);
-          }
-          
-          console.log(`流式响应完成，会话ID: ${receivedConversationId}, 内容长度: ${receivedContent.length}`);
-          
-          // 关闭事件源
-          console.log('关闭EventSource连接');
-          eventSource.close();
-          
-          // 返回结果前确保所有内容已更新
-          setTimeout(() => {
-            // 返回结果
-            resolve({
+            const parsed = JSON.parse(data) as { conversation_id?: string; image_url?: string };
+            if (parsed.conversation_id) receivedConversationId = parsed.conversation_id;
+            return {
               content: receivedContent,
               conversationId: receivedConversationId,
-              image_url: data.image_url
-            });
-            console.log('流式响应处理完成，Promise已解析');
-          }, 100);
-        } catch (error) {
-          console.error('处理完成事件失败:', error);
-          eventSource.close();
-          reject(error);
+              image_url: parsed.image_url,
+            };
+          } catch {
+            return { content: receivedContent, conversationId: receivedConversationId };
+          }
         }
-      });
-      
-      // 处理错误事件
-      eventSource.addEventListener('error', (event: Event) => {
-        console.error('EventSource错误:', event);
-        eventSource.close();
-        reject(new Error('流式响应连接出错'));
-      });
-      
-    } catch (error) {
-      console.error('初始化流式请求失败:', error);
-      reject(error);
+        currentEvent = '';
+      }
     }
-  });
+  }
+
+  if (buffer.trim()) {
+    const lines = buffer.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('event:')) currentEvent = line.slice(6).trim();
+      else if (line.startsWith('data:') && currentEvent) {
+        const raw = line.slice(5);
+        const data =
+          currentEvent === 'message'
+            ? raw.replace(/^ /, '')
+            : raw.trim();
+        if (currentEvent === 'done') {
+          try {
+            const parsed = JSON.parse(data) as { conversation_id?: string; image_url?: string };
+            if (parsed.conversation_id) receivedConversationId = parsed.conversation_id;
+            return {
+              content: receivedContent,
+              conversationId: receivedConversationId,
+              image_url: parsed.image_url,
+            };
+          } catch {
+            break;
+          }
+        }
+        currentEvent = '';
+      }
+    }
+  }
+  return { content: receivedContent, conversationId: receivedConversationId };
 }
 
-// 获取对话历史
+// 获取对话历史（404 视为空历史，兼容旧后端或新会话）
 export const getChatHistory = async (conversationId: string) => {
-  const response = await axios.get(`${API_BASE_URL}/history/${conversationId}`);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_BASE_URL}/history/${conversationId}`);
+    return response.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return { history: [], conversation_id: conversationId };
+    }
+    throw err;
+  }
 };
 
 // 文生图API调用
@@ -435,3 +408,37 @@ export async function callTextToImage(
     throw error;
   }
 } 
+
+// 上传新的知识文件，写入后端 Chroma 向量库
+export async function uploadKnowledgeFile(
+  file: File
+): Promise<{
+  success?: boolean;
+  filename?: string;
+  chunks?: number;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await axios.post(
+      `${API_BASE_URL}/knowledge/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('上传知识文件失败:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      return error.response.data;
+    }
+    return { error: '上传知识文件失败，请稍后重试。' };
+  }
+}

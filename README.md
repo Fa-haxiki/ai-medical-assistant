@@ -1,6 +1,6 @@
 # AI医疗助手
 
-基于React + FastAPI + LangChain + 通义千问的智能医疗问答系统，支持基于检索增强生成(RAG)的医疗知识问答。
+基于 React + Node.js/Express + LangChain JS + 通义千问的智能医疗问答系统，支持基于检索增强生成（RAG）的医疗知识问答。
 
 
 正常提问
@@ -14,7 +14,7 @@
 
 ## 项目简介
 
-AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，旨在为用户提供准确、专业的医疗咨询服务。系统采用前后端分离架构，前端使用React构建友好的用户界面，后端使用FastAPI提供高性能的API服务，并结合LangChain框架和通义千问大语言模型提供智能问答能力。本项目是本人用于学习LangChain框架的练手项目，后续会继续完善。
+AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，旨在为用户提供准确、专业的医疗咨询服务。系统采用前后端分离架构，前端使用 React 构建友好的用户界面，后端使用 Node.js/Express 提供 API 服务，并结合 LangChain JS 框架和通义千问大语言模型提供智能问答能力。本项目是本人用于学习 LangChain 的练手项目，后续会继续完善。
 
 ### 核心功能
 
@@ -39,8 +39,8 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
   - 消息提示 (react-hot-toast)
 
 ### 后端
-- **框架**：FastAPI (Python)
-- **AI框架**：LangChain 0.3.0
+- **框架**：Node.js/Express（见 `backend-node/`）
+- **AI框架**：LangChain JS
 - **大语言模型**：通义千问 (qwen-turbo/qwen-plus/qwen-max)
 - **向量数据库**：Chroma
 - **文本嵌入**：DashScope Embeddings
@@ -52,7 +52,7 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
 ```
 ┌─────────────┐    HTTP/SSE    ┌──────────────┐     API     ┌─────────────┐
 │   Frontend  │◄──────────────►│    Backend   │◄───────────►│ Tongyi API  │
-│  (React.js) │                │   (FastAPI)  │             │ (qwen-turbo) │
+│  (React.js) │                │ (Express.js) │             │ (qwen-turbo) │
 └─────────────┘                └──────────────┘             └─────────────┘
                                       │
                                       │ Query
@@ -74,44 +74,19 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
 
 ### 环境要求
 
-- Python 3.10+ (后端)
-- Node.js 16+ (前端)
+- Node.js 24+（后端见 `backend-node/`），16+（前端）
 - 通义千问API密钥 (可在[阿里云DashScope](https://dashscope.console.aliyun.com/)申请)
 
 ### 后端设置
 
-1. 克隆仓库并进入后端目录
-```bash
-git clone https://github.com/yourusername/medical-ai-assistant.git
-cd medical-ai-assistant/backend
-```
+详见 `backend-node/README.md`。简要步骤：
 
-2. 创建并激活Python虚拟环境
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-```
-
-3. 安装依赖
-```bash
-pip install -r requirements.txt
-```
-
-4. 配置环境变量
-创建或编辑 `.env` 文件，填入你的通义千问API密钥
-```
-DASHSCOPE_API_KEY=your_dashscope_api_key_here
-PORT=8000
-HOST=0.0.0.0
-CORS_ALLOW_ORIGINS=http://localhost:3000
-```
-
-5. 启动服务器
-```bash
-python main.py
-# 或者使用uvicorn
-# uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+cd backend-node
+cp .env.example .env   # 填写 DASHSCOPE_API_KEY 等
+npm install
+# 可选：启动 Chroma 以启用 RAG — docker run -p 8010:8000 chromadb/chroma，并设置 CHROMA_URL=http://localhost:8010
+npm run dev
 ```
 
 ### 前端设置
@@ -142,12 +117,15 @@ npm start
 
 ## API文档
 
-启动后端服务器后，可以访问 http://localhost:8000/docs 查看API文档，包括：
+启动后端服务器后，可用以下接口：
 
 - `/api/chat` - 非流式聊天接口
-- `/api/chat_stream` - 流式聊天接口（SSE）
-- `/api/updateApiKey` - 更新API密钥
-- `/api/conversations` - 对话管理接口
+- `/api/chat/stream` - 流式聊天接口（SSE）
+- `/api/history/:conversationId` - 获取会话历史
+- `/api/chat/multimodal` - 图片+文本多模态（表单上传）
+- `/api/chat/multimodal-json` - 图片+文本多模态（Base64）
+- `/api/text2image` - 文生图
+- `/api/knowledge/upload` - 上传知识文件写入向量库（支持 `.md/.txt/.pdf/.docx`）
 
 ## 项目扩展
 
@@ -173,6 +151,5 @@ npm start
 ## 致谢
 
 - [LangChain](https://github.com/langchain-ai/langchain) - LLM应用框架
-- [FastAPI](https://fastapi.tiangolo.com/) - 高性能API框架
 - [React](https://reactjs.org/) - 用户界面库
 - [通义千问](https://dashscope.aliyun.com/) - 大语言模型服务
