@@ -55,23 +55,20 @@ export class MultimodalController {
     if (base64.includes(';base64,')) base64 = base64.split(';base64,')[1];
     else if (base64.includes(',')) base64 = base64.split(',')[1];
 
-    const history = (chat_history.length
+    const storedHistory = chat_history.length
       ? chat_history
-      : this.conversationService
-          .getHistory(conversationId)
+      : (await this.conversationService.getHistory(conversationId))
           .slice(-10)
-          .map((m) => ({ role: m.role, content: m.content }))) as Array<{
-      role: string;
-      content: string;
-    }>;
+          .map((m) => ({ role: m.role, content: m.content }));
+    const history = storedHistory as Array<{ role: string; content: string }>;
 
     const responseText = await this.multimodalService.multimodalChat(
       message,
       base64,
       history,
     );
-    this.conversationService.appendMessage(conversationId, 'user', message);
-    this.conversationService.appendMessage(
+    await this.conversationService.appendMessage(conversationId, 'user', message);
+    await this.conversationService.appendMessage(
       conversationId,
       'assistant',
       responseText,
@@ -104,13 +101,13 @@ export class MultimodalController {
       size,
     });
 
-    this.conversationService.appendMessage(
+    await this.conversationService.appendMessage(
       conversationId,
       'user',
       `请根据以下描述生成图片: ${prompt}`,
     );
     if (urls[0]) {
-      this.conversationService.appendMessage(
+      await this.conversationService.appendMessage(
         conversationId,
         'assistant',
         `已根据您的描述生成图片: ${prompt}`,

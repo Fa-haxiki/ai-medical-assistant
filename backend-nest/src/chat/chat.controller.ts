@@ -58,17 +58,16 @@ export class ChatController {
     }));
 
     if (!history.length) {
-      history = this.conversationService
-        .getHistory(conversationId)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const stored = await this.conversationService.getHistory(conversationId);
+      history = stored.map((m) => ({ role: m.role, content: m.content }));
     }
 
     const responseContent = await this.chatService.smartAnswer(
       message,
       history,
     );
-    this.conversationService.appendMessage(conversationId, 'user', message);
-    this.conversationService.appendMessage(
+    await this.conversationService.appendMessage(conversationId, 'user', message);
+    await this.conversationService.appendMessage(
       conversationId,
       'assistant',
       responseContent,
@@ -117,19 +116,18 @@ export class ChatController {
     }));
 
     if (!history.length) {
-      history = this.conversationService
-        .getHistory(conversationId)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const stored = await this.conversationService.getHistory(conversationId);
+      history = stored.map((m) => ({ role: m.role, content: m.content }));
     }
 
     try {
-      this.conversationService.appendMessage(conversationId, 'user', message);
+      await this.conversationService.appendMessage(conversationId, 'user', message);
       const fullResponse = await this.chatService.smartAnswer(
         message,
         history,
       );
       for (const char of fullResponse) sendMessageChunk(char);
-      this.conversationService.appendMessage(
+      await this.conversationService.appendMessage(
         conversationId,
         'assistant',
         fullResponse,
@@ -148,6 +146,11 @@ export class ChatController {
         history,
       );
       for (const char of fallback) sendMessageChunk(char);
+      await this.conversationService.appendMessage(
+        conversationId,
+        'assistant',
+        fallback,
+      );
       send(
         'done',
         JSON.stringify({

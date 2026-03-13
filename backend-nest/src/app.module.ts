@@ -9,6 +9,7 @@ import { ConversationModule } from './conversation/conversation.module';
 import { MultimodalModule } from './multimodal/multimodal.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { RequestLoggerMiddleware } from './common/logger.middleware';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RequestLoggerMiddleware } from './common/logger.middleware';
       isGlobal: true,
       envFilePath: ['.env', '.env.example'],
     }),
+    DatabaseModule,
     RagModule,
     ChatModule,
     ConversationModule,

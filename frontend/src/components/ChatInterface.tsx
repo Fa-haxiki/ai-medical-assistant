@@ -62,7 +62,6 @@ const ChatMessageList = React.memo(function ChatMessageList({
   isLoading: boolean
   messagesEndRef: React.RefObject<HTMLDivElement | null>
 }) {
-  console.log('render', messages)
   return (
     <>
       {messages.map((message, index) => (

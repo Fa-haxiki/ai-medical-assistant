@@ -72,5 +72,37 @@ export class AppConfigService {
     }
     return null;
   }
+
+  /** MySQL 会话持久化：未配置 MYSQL_DATABASE 则使用内存 */
+  get mysqlHost(): string {
+    return this.config.get<string>('MYSQL_HOST') ?? 'localhost';
+  }
+  get mysqlPort(): number {
+    const v = this.config.get<string>('MYSQL_PORT');
+    return v ? parseInt(v, 10) : 3306;
+  }
+  get mysqlUser(): string {
+    return this.config.get<string>('MYSQL_USER') ?? 'root';
+  }
+  get mysqlPassword(): string {
+    return this.config.get<string>('MYSQL_PASSWORD') ?? '';
+  }
+  get mysqlDatabase(): string {
+    return this.config.get<string>('MYSQL_DATABASE') ?? 'medical_assistant';
+  }
+  get mysqlEnabled(): boolean {
+    return !!this.config.get<string>('MYSQL_DATABASE');
+  }
+
+  /** 会话超过多少天未活跃则删除（默认 30） */
+  get conversationInactiveDays(): number {
+    const v = this.config.get<string>('CONVERSATION_INACTIVE_DAYS');
+    return v ? parseInt(v, 10) : 30;
+  }
+  /** 单会话最多保留消息条数（默认 200） */
+  get maxMessagesPerConversation(): number {
+    const v = this.config.get<string>('MAX_MESSAGES_PER_CONVERSATION');
+    return v ? parseInt(v, 10) : 200;
+  }
 }
 
