@@ -39,7 +39,8 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
   - 消息提示 (react-hot-toast)
 
 ### 后端
-- **框架**：Node.js/Express（见 `backend-node/`）
+- **框架**：NestJS（新后端，见 `backend-nest/`，推荐使用）
+- **旧版后端**：Node.js/Express（见 `backend-node/`，后续将逐步废弃）
 - **AI框架**：LangChain JS
 - **大语言模型**：通义千问 (qwen-turbo/qwen-plus/qwen-max)
 - **向量数据库**：Chroma
@@ -77,17 +78,23 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
 - Node.js 24+（后端见 `backend-node/`），16+（前端）
 - 通义千问API密钥 (可在[阿里云DashScope](https://dashscope.console.aliyun.com/)申请)
 
-### 后端设置
+### 后端设置（NestJS 推荐）
 
-详见 `backend-node/README.md`。简要步骤：
+#### 1. 启动 NestJS 后端
 
 ```bash
-cd backend-node
-cp .env.example .env   # 填写 DASHSCOPE_API_KEY 等
+cd backend-nest
+cp ../backend-node/.env.example .env   # 也可以手动创建 .env，变量与 backend-node 保持一致
 npm install
-# 可选：启动 Chroma 以启用 RAG — docker run -p 8010:8000 chromadb/chroma，并设置 CHROMA_URL=http://localhost:8010
-npm run dev
+chroma run --host 0.0.0.0 --port 8010 --path ./chroma_data
+npm run start:dev
 ```
+
+服务启动后默认监听 `HOST` / `PORT`（默认 `localhost:8000`），根路径 `/` 提供健康检查和 RAG 状态信息。
+
+#### 2. 旧 Express 后端（可选，逐步废弃）
+
+如需使用旧版后端，仍可参考 `backend-node/README.md`：结构和接口与下文基本一致，但新功能将只在 NestJS 版本演进。
 
 ### 前端设置
 
@@ -117,12 +124,11 @@ npm start
 
 ## API文档
 
-启动后端服务器后，可用以下接口：
+启动 NestJS 后端服务器后，可用以下主要接口（路径与旧版基本兼容）：
 
 - `/api/chat` - 非流式聊天接口
 - `/api/chat/stream` - 流式聊天接口（SSE）
-- `/api/history/:conversationId` - 获取会话历史
-- `/api/chat/multimodal` - 图片+文本多模态（表单上传）
+- `/api/history/:conversationId` - 获取会话历史（当前存储在内存中）
 - `/api/chat/multimodal-json` - 图片+文本多模态（Base64）
 - `/api/text2image` - 文生图
 - `/api/knowledge/upload` - 上传知识文件写入向量库（支持 `.md/.txt/.pdf/.docx`）

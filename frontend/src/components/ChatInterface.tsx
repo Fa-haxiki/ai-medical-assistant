@@ -95,20 +95,10 @@ const ChatMessageList = React.memo(function ChatMessageList({
               hour: '2-digit',
               minute: '2-digit'
             })}
+            {isLoading && <div className="loading-bar" aria-hidden="true" />}
           </div>
         </div>
       ))}
-      {isLoading && (
-        <div className="message assistant loading-state">
-          <div className="loading-bar" aria-hidden="true" />
-          <div className="message-info">
-            AI医疗助手 · 正在思考... ·{' '}
-            <span className="message-info-time">
-              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
-      )}
       <div ref={messagesEndRef} />
     </>
   )

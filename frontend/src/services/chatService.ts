@@ -286,12 +286,18 @@ export async function sendStreamMessage(
       if (line.startsWith('event:')) {
         currentEvent = line.slice(6).trim();
       } else if (line.startsWith('data:') && currentEvent) {
-        const raw = line.slice(5); // " data" 开头，后面是实际内容
-        // 对于 message 事件，保留模型原始输出（包括换行），只去掉前导空格
+        const raw = line.slice(5).trim();
+        // message 事件：后端用 JSON 编码以保留换行/空格，需 parse 还原
         const data =
           currentEvent === 'message'
-            ? raw.replace(/^ /, '')
-            : raw.trim();
+            ? (() => {
+                try {
+                  return JSON.parse(raw) as string;
+                } catch {
+                  return raw;
+                }
+              })()
+            : raw;
         if (currentEvent === 'message') {
           receivedContent += data;
           onTokenReceived?.(data);
@@ -319,12 +325,21 @@ export async function sendStreamMessage(
       const line = lines[i];
       if (line.startsWith('event:')) currentEvent = line.slice(6).trim();
       else if (line.startsWith('data:') && currentEvent) {
-        const raw = line.slice(5);
+        const raw = line.slice(5).trim();
         const data =
           currentEvent === 'message'
-            ? raw.replace(/^ /, '')
-            : raw.trim();
-        if (currentEvent === 'done') {
+            ? (() => {
+                try {
+                  return JSON.parse(raw) as string;
+                } catch {
+                  return raw;
+                }
+              })()
+            : raw;
+        if (currentEvent === 'message') {
+          receivedContent += data;
+          onTokenReceived?.(data);
+        } else if (currentEvent === 'done') {
           try {
             const parsed = JSON.parse(data) as { conversation_id?: string; image_url?: string };
             if (parsed.conversation_id) receivedConversationId = parsed.conversation_id;

@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+*.log
+*.tmp
+.DS_Store
+*.tsbuildinfo
+chroma_data
+
+# env
+.env.local
+

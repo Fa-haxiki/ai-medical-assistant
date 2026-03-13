@@ -168,11 +168,12 @@
 }
 
 .loading-bar {
+    width: 50px;
     height: 4px;
     border-radius: 2px;
     background: #e2e8f0;
     overflow: hidden;
-    margin-bottom: 6px;
+    margin-left: 10px;
 }
 
 .loading-bar::after {
