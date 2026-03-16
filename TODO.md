@@ -25,7 +25,7 @@
   - 已提供基础的知识库查询接口：`GET /api/knowledge/files?limit=50` 返回最近上传文件列表；`GET /api/knowledge/stats` 返回总文件数、总片段数、最近上传时间等统计信息。
   - 已支持按文件名删除/重建部分向量：`DELETE /api/knowledge/file?filename=xxx` 会按 `metadata.source=filename` 从 Chroma 中删除对应向量，并清理元数据，之后重新上传该文件即可完成“重建部分向量”。
 
-- [ ] **配置与安全**
+- [x] **配置与安全**
   - 确认所有敏感配置仅从 `.env` 读取（已通过 `ConfigModule` 注入），避免硬编码。
   - 为生产环境准备示例配置（日志等级、CORS 白名单、端口等），可补充 `backend-nest/.env.example`。
 
