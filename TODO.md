@@ -16,9 +16,9 @@
   - 已用 `class-validator` + 全局 `ValidationPipe` 做入参校验：聊天消息长度与历史条数、多模态/文生图 DTO、会话列表 `limit` 等；图片 base64 大小由 `MultimodalImageSizeGuard` 按配置校验；知识库上传通过 `MulterModule.registerAsync` 限制文件大小。
   - 已接入 `@nestjs/throttler` 按 IP 全局限流（`THROTTLE_TTL_SECONDS` / `THROTTLE_LIMIT` 可配置）；已增加同 IP 并发保护（`ConcurrencyGuard` + `ConcurrencyReleaseInterceptor`，`MAX_CONCURRENT_CHAT_PER_IP` 可配置）。
 
-- [ ] **多模态与文生图健壮性**
-  - 针对 DashScope/百炼返回错误码做更细粒度处理与重试（网络抖动、超时、配额不足）。
-  - 为多模态接口补充更清晰的错误信息（比如“图片过大/格式不支持”等）。
+- [x] **多模态与文生图健壮性**
+  - 已在 `MultimodalService` 中对 DashScope/百炼响应进行错误码解析与分类处理，并对 5xx/网络异常增加简单重试（按状态区分配额不足、认证失败、参数不合法等场景）。
+  - 多模态与文生图接口在发生错误时，会返回更清晰的业务错误信息（例如“图片参数不合法（尺寸/格式不受支持）”“请求参数不合法”“服务暂时不可用，请稍后再试”等），便于前端针对性提示用户。
 
 - [ ] **知识文件上传增强**
   - 为上传的文件增加元数据记录（文件名、上传时间、片段数），便于后续查看与管理。

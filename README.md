@@ -2,16 +2,6 @@
 
 基于 React + NestJS + LangChain JS + 通义千问的智能医疗问答系统，支持基于检索增强生成（RAG）的医疗知识问答。
 
-
-正常提问
-
-![AI医疗助手](/frontend/public/nomal.png)
-
-经过RAG处理提问
-
-![AI医疗助手](/frontend/public/ragResult.png)
-
-
 ## 项目简介
 
 AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，旨在为用户提供准确、专业的医疗咨询服务。系统采用前后端分离架构，前端使用 React 构建友好的用户界面，后端使用 NestJS 提供 API 服务，并结合 LangChain JS 框架和通义千问大语言模型提供智能问答能力。本项目是本人用于学习 LangChain 的练手项目，后续会继续完善。
