@@ -20,3 +20,15 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX idx_messages_timestamp ON messages(conversation_id, timestamp);
 CREATE INDEX idx_conversations_updated_at ON conversations(updated_at);
+
+-- MySQL: 知识库文件元数据表（记录每次上传的文件及其片段数）
+CREATE TABLE IF NOT EXISTS knowledge_files (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  filename VARCHAR(512) NOT NULL,
+  tag VARCHAR(255) DEFAULT NULL,
+  chunk_count INT NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_knowledge_files_filename ON knowledge_files(filename);
+CREATE INDEX idx_knowledge_files_created_at ON knowledge_files(created_at);

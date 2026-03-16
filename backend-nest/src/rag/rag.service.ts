@@ -76,6 +76,7 @@ export class RagService implements OnModuleInit {
       chromaConfig,
     );
     await vectorStore.addDocuments(splits);
+
     this.logger.log(
       `新增知识文档已写入向量库: ${source}, 片段数: ${splits.length}`,
     );

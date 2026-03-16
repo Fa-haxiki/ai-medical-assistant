@@ -3,6 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { KnowledgeController } from './knowledge.controller';
 import { RagModule } from '../rag/rag.module';
+import { KnowledgeRepository } from './knowledge.repository';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { RagModule } from '../rag/rag.module';
     }),
   ],
   controllers: [KnowledgeController],
-  providers: [],
+  providers: [KnowledgeRepository],
+  exports: [KnowledgeRepository],
 })
 export class KnowledgeModule {}
 

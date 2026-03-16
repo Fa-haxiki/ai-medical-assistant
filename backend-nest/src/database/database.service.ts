@@ -21,6 +21,8 @@ export class DatabaseService implements OnModuleDestroy {
         user: this.config.mysqlUser,
         password: this.config.mysqlPassword,
         database: this.config.mysqlDatabase,
+        // 确保中文等多字节字符以 utf8mb4 存储与读取
+        charset: 'utf8mb4',
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0,
