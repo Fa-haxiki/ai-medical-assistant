@@ -6,16 +6,17 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ChatService } from './chat.service';
 import { ChatMessage } from './chat.types';
 import { ConversationService } from '../conversation/conversation.service';
-
-interface ChatRequestBody {
-  message?: string;
-  chat_history?: Array<{ role: string; content: string }>;
-}
+import { ChatRequestDto } from './dto/chat-request.dto';
+import { ChatBodyLimitGuard } from '../common/guards/body-limit.guard';
+import { ConcurrencyGuard } from '../common/guards/concurrency.guard';
+import { ConcurrencyReleaseInterceptor } from '../common/concurrency-release.interceptor';
 
 function asString(v: unknown): string | undefined {
   if (typeof v === 'string') return v;
@@ -41,18 +42,16 @@ export class ChatController {
 
   @Post('chat')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ConcurrencyGuard, ChatBodyLimitGuard)
+  @UseInterceptors(ConcurrencyReleaseInterceptor)
   async chat(
-    @Body() body: ChatRequestBody,
+    @Body() body: ChatRequestDto,
     @Req() req: Request,
   ): Promise<{ response: string; conversation_id: string }> {
     const conversationId = getConversationId(req);
     const { message, chat_history = [] } = body;
 
-    if (!message || typeof message !== 'string') {
-      throw new Error('缺少 message');
-    }
-
-    let history: ChatMessage[] = chat_history.map((m) => ({
+    let history: ChatMessage[] = (chat_history ?? []).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -76,8 +75,10 @@ export class ChatController {
   }
 
   @Post('chat/stream')
+  @UseGuards(ConcurrencyGuard, ChatBodyLimitGuard)
+  @UseInterceptors(ConcurrencyReleaseInterceptor)
   async chatStream(
-    @Body() body: ChatRequestBody,
+    @Body() body: ChatRequestDto,
     @Req() req: Request,
     @Res() res: Response,
   ) {
@@ -97,20 +98,7 @@ export class ChatController {
       send('message', JSON.stringify(chunk));
     };
 
-    if (!message || typeof message !== 'string') {
-      sendMessageChunk('请输入您的问题');
-      send(
-        'done',
-        JSON.stringify({
-          message: 'Stream completed',
-          conversation_id: conversationId,
-        }),
-      );
-      res.end();
-      return;
-    }
-
-    let history: ChatMessage[] = chat_history.map((m) => ({
+    let history: ChatMessage[] = (chat_history ?? []).map((m) => ({
       role: m.role,
       content: m.content,
     }));

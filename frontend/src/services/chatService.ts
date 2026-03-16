@@ -372,6 +372,25 @@ export const getChatHistory = async (conversationId: string) => {
   }
 };
 
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
+export const listConversations = async (
+  limit = 20,
+): Promise<ConversationSummary[]> => {
+  const response = await axios.get(`${API_BASE_URL}/conversations`, {
+    params: { limit },
+  });
+  return (response.data?.conversations ?? []) as ConversationSummary[];
+};
+
+export const deleteConversation = async (conversationId: string) => {
+  await axios.delete(`${API_BASE_URL}/conversations/${conversationId}`);
+};
+
 // 文生图API调用
 export async function callTextToImage(
   prompt: string,

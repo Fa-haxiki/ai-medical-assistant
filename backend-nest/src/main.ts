@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AppConfigService } from './config/config.service';
 import { Logger } from '@nestjs/common';
+import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,6 +15,19 @@ async function bootstrap() {
     origin: config.corsOrigin || '*',
     credentials: true,
   });
+
+  // 全局入参校验：DTO 校验 + 自动转型
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+      whitelist: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
+
+  // 全局错误格式统一
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const host = config.host;
   const port = config.port;

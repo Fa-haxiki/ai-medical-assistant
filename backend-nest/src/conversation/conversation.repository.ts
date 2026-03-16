@@ -10,14 +10,22 @@ export class ConversationRepository {
     private readonly config: AppConfigService,
   ) {}
 
-  async ensureConversation(conversationId: string): Promise<void> {
+  async ensureConversation(
+    conversationId: string,
+    defaultTitle?: string,
+  ): Promise<void> {
     const pool = this.db.getPool();
     if (!pool) return;
+    const suffix =
+      conversationId.length > 6
+        ? conversationId.slice(-6)
+        : conversationId || '';
+    const title = defaultTitle ?? `对话${suffix}`;
     await pool.execute(
-      `INSERT INTO conversations (id, created_at, updated_at)
-       VALUES (?, NOW(6), NOW(6))
+      `INSERT INTO conversations (id, title, created_at, updated_at)
+       VALUES (?, ?, NOW(6), NOW(6))
        ON DUPLICATE KEY UPDATE updated_at = NOW(6)`,
-      [conversationId],
+      [conversationId, title],
     );
   }
 
@@ -76,6 +84,36 @@ export class ConversationRepository {
     }));
   }
 
+  async listRecent(limit = 20): Promise<{ id: string; updated_at: Date }[]> {
+    if (!this.db.getPool()) return [];
+    const rows = await this.db.query<{
+      id: string;
+      title: string | null;
+      updated_at: Date;
+    }>(
+      `SELECT id, title, updated_at
+       FROM conversations
+       ORDER BY updated_at DESC
+       LIMIT ${limit}`,
+    );
+    return rows;
+  }
+
+  async updateTitleIfEmpty(
+    conversationId: string,
+    title: string,
+  ): Promise<void> {
+    const pool = this.db.getPool();
+    if (!pool) return;
+    await pool.execute(
+      `UPDATE conversations
+       SET title = ?
+       WHERE id = ?
+         AND (title IS NULL OR title = '' OR title LIKE '对话%')`,
+      [title, conversationId],
+    );
+  }
+
   async deleteConversationsOlderThan(cutoff: Date): Promise<number> {
     const pool = this.db.getPool();
     if (!pool) return 0;
@@ -84,5 +122,13 @@ export class ConversationRepository {
     ]);
     const result = header as { affectedRows?: number };
     return result?.affectedRows ?? 0;
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    const pool = this.db.getPool();
+    if (!pool) return;
+    await pool.execute('DELETE FROM conversations WHERE id = ?', [
+      conversationId,
+    ]);
   }
 }

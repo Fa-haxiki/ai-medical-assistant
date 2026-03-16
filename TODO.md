@@ -8,13 +8,13 @@
   - 已支持 MySQL 持久化：配置 `MYSQL_DATABASE` 等环境变量后，会话与消息写入 MySQL，进程重启可恢复。
   - 已实现过期/清理：单会话最多保留 `MAX_MESSAGES_PER_CONVERSATION` 条（默认 200）；超过 `CONVERSATION_INACTIVE_DAYS` 天（默认 30）未活跃的会话定时清理。
 
-- [ ] **请求与错误日志优化**
-  - 为关键接口（`/api/chat*`、`/api/knowledge/upload` 等）增加结构化日志（包含会话 ID、RAG 命中情况、耗时），可结合 Nest 拦截器或中间件实现。
-  - 区分用户错误（4xx）与系统错误（5xx），使用全局异常过滤器统一错误响应格式。
+- [x] **请求与错误日志优化**
+  - 已为关键接口增加结构化日志（包含方法、路径、状态码、耗时，以及会话 ID `conv=...`），通过 `RequestLoggerMiddleware` 记录。
+  - 已使用全局异常过滤器 `AllExceptionsFilter` 统一错误响应格式，区分 4xx/5xx 并返回标准 JSON 结构。
 
-- [ ] **参数与限流校验**
-  - 对入参进行更严格校验（消息长度、图片大小/分辨率、上传文件大小上限等），可配合 `class-validator`/Pipe。
-  - 增加基础限流（按 IP / 会话 ID）与并发保护，避免误操作打爆后端或百炼额度。
+- [x] **参数与限流校验**
+  - 已用 `class-validator` + 全局 `ValidationPipe` 做入参校验：聊天消息长度与历史条数、多模态/文生图 DTO、会话列表 `limit` 等；图片 base64 大小由 `MultimodalImageSizeGuard` 按配置校验；知识库上传通过 `MulterModule.registerAsync` 限制文件大小。
+  - 已接入 `@nestjs/throttler` 按 IP 全局限流（`THROTTLE_TTL_SECONDS` / `THROTTLE_LIMIT` 可配置）；已增加同 IP 并发保护（`ConcurrencyGuard` + `ConcurrencyReleaseInterceptor`，`MAX_CONCURRENT_CHAT_PER_IP` 可配置）。
 
 - [ ] **多模态与文生图健壮性**
   - 针对 DashScope/百炼返回错误码做更细粒度处理与重试（网络抖动、超时、配额不足）。

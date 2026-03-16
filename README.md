@@ -96,6 +96,9 @@ cp .env.example .env   # 若无 .env.example，可手动创建 .env，配置 POR
 
 ```bash
 docker run -p 8010:8000 chromadb/chroma
+// 或者
+cd backend-nest
+chroma run --host 0.0.0.0 --port 8010 --path ./chroma_data
 ```
 
 在 `.env` 中设置 `CHROMA_URL=http://localhost:8010`。
@@ -121,7 +124,9 @@ mysql -h localhost -P 3306 -u root -p medical_assistant < src/database/schema.sq
 
 可选：`CONVERSATION_INACTIVE_DAYS=30`（多少天未活跃则清理）、`MAX_MESSAGES_PER_CONVERSATION=200`（单会话最多保留消息数）。不配置 MySQL 时仍使用内存存储。
 
-5. 启动开发服务：
+5. （可选）参数与限流：可配置 `MAX_MESSAGE_LENGTH`（单条消息最大字符，默认 10000）、`MAX_CHAT_HISTORY_LENGTH`（请求体历史条数上限，默认 50）、`MAX_IMAGE_SIZE_MB`（多模态图片 base64 最大 MB，默认 5）、`MAX_UPLOAD_FILE_SIZE_MB`（知识库上传最大 MB，默认 10）、`THROTTLE_TTL_SECONDS` / `THROTTLE_LIMIT`（限流时间窗与每 IP 请求数，默认 60 秒 / 120 次）、`MAX_CONCURRENT_CHAT_PER_IP`（同 IP 并发对话/流式数，默认 3）。
+
+6. 启动开发服务：
 
 ```bash
 npm run start:dev

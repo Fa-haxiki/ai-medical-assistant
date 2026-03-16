@@ -5,10 +5,17 @@ import {
   HttpStatus,
   Post,
   Req,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { MultimodalService } from './multimodal.service';
 import { ConversationService } from '../conversation/conversation.service';
+import { MultimodalRequestDto } from './dto/multimodal-request.dto';
+import { Text2ImageRequestDto } from './dto/text2image-request.dto';
+import { MultimodalImageSizeGuard } from '../common/guards/image-size.guard';
+import { ConcurrencyGuard } from '../common/guards/concurrency.guard';
+import { ConcurrencyReleaseInterceptor } from '../common/concurrency-release.interceptor';
 
 function asString(v: unknown): string | undefined {
   if (typeof v === 'string') return v;
@@ -33,23 +40,14 @@ export class MultimodalController {
 
   @Post('chat/multimodal-json')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ConcurrencyGuard, MultimodalImageSizeGuard)
+  @UseInterceptors(ConcurrencyReleaseInterceptor)
   async multimodalJson(
-    @Body()
-    body: {
-      message?: string;
-      chat_history?: Array<{ role: string; content: string }>;
-      image_data?: string;
-    },
+    @Body() body: MultimodalRequestDto,
     @Req() req: Request,
   ) {
     const conversationId = getConversationId(req);
     const { message, chat_history = [], image_data } = body;
-
-    if (!message || !image_data) {
-      return {
-        error: '需要 message 和 image_data (base64)',
-      };
-    }
 
     let base64 = image_data;
     if (base64.includes(';base64,')) base64 = base64.split(';base64,')[1];
@@ -79,21 +77,14 @@ export class MultimodalController {
 
   @Post('text2image')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ConcurrencyGuard)
+  @UseInterceptors(ConcurrencyReleaseInterceptor)
   async text2image(
-    @Body()
-    body: {
-      prompt?: string;
-      negative_prompt?: string;
-      n?: number;
-      size?: string;
-    },
+    @Body() body: Text2ImageRequestDto,
     @Req() req: Request,
   ) {
     const conversationId = getConversationId(req);
-    const { prompt, negative_prompt, n = 1, size = '1024*1024' } = body ?? {};
-    if (!prompt) {
-      return { error: '需要 prompt' };
-    }
+    const { prompt, negative_prompt, n = 1, size = '1024*1024' } = body;
 
     const urls = await this.multimodalService.textToImage(prompt, {
       negative_prompt,

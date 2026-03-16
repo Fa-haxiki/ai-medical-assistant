@@ -104,5 +104,44 @@ export class AppConfigService {
     const v = this.config.get<string>('MAX_MESSAGES_PER_CONVERSATION');
     return v ? parseInt(v, 10) : 200;
   }
+
+  // ---------- 参数与限流校验 ----------
+  /** 单条消息最大字符数（默认 10000） */
+  get maxMessageLength(): number {
+    const v = this.config.get<string>('MAX_MESSAGE_LENGTH');
+    return v ? parseInt(v, 10) : 10000;
+  }
+  /** 请求体中的 chat_history 最大条数（默认 50） */
+  get maxChatHistoryLength(): number {
+    const v = this.config.get<string>('MAX_CHAT_HISTORY_LENGTH');
+    return v ? parseInt(v, 10) : 50;
+  }
+  /** 图片 base64 最大字节数（默认 5MB） */
+  get maxImageSizeBytes(): number {
+    const v = this.config.get<string>('MAX_IMAGE_SIZE_MB');
+    const mb = v ? parseFloat(v) : 5;
+    return Math.floor(mb * 1024 * 1024);
+  }
+  /** 上传知识库文件最大字节数（默认 10MB） */
+  get maxUploadFileSizeBytes(): number {
+    const v = this.config.get<string>('MAX_UPLOAD_FILE_SIZE_MB');
+    const mb = v ? parseFloat(v) : 10;
+    return Math.floor(mb * 1024 * 1024);
+  }
+  /** 限流：时间窗口秒数（默认 60） */
+  get throttleTtlSeconds(): number {
+    const v = this.config.get<string>('THROTTLE_TTL_SECONDS');
+    return v ? parseInt(v, 10) : 60;
+  }
+  /** 限流：时间窗口内每 IP 最大请求数（默认 120） */
+  get throttleLimit(): number {
+    const v = this.config.get<string>('THROTTLE_LIMIT');
+    return v ? parseInt(v, 10) : 120;
+  }
+  /** 同一 IP 允许的并发流式/对话请求数（默认 3） */
+  get maxConcurrentChatPerIp(): number {
+    const v = this.config.get<string>('MAX_CONCURRENT_CHAT_PER_IP');
+    return v ? parseInt(v, 10) : 3;
+  }
 }
 

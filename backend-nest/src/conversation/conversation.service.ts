@@ -69,6 +69,16 @@ export class ConversationService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     if (this.config.mysqlEnabled) {
       await this.repo.appendMessage(conversationId, role, content, image_url);
+      if (role === 'user') {
+        const short =
+          content.trim().replace(/\s+/g, ' ').slice(0, 10) || '新问题';
+        const suffix =
+          conversationId.length > 6
+            ? conversationId.slice(-6)
+            : conversationId || '';
+        const title = `${short}|${suffix}`;
+        await this.repo.updateTitleIfEmpty(conversationId, title);
+      }
       return;
     }
     const conv = this.getOrCreateConversation(conversationId);
@@ -86,5 +96,41 @@ export class ConversationService implements OnModuleInit, OnModuleDestroy {
     }
     const conv = this.memoryStore[conversationId];
     return conv ? conv.messages : [];
+  }
+
+  async listConversations(limit = 20): Promise<
+    { id: string; title: string; updated_at: string }[]
+  > {
+    if (this.config.mysqlEnabled) {
+      const rows = await this.repo.listRecent(limit);
+      return rows.map((r) => ({
+        id: r.id,
+        title: (r as any).title || '',
+        updated_at: new Date(r.updated_at).toISOString(),
+      }));
+    }
+    const entries = Object.entries(this.memoryStore).map(([id, conv]) => {
+      const last =
+        conv.messages[conv.messages.length - 1]?.timestamp ??
+        new Date(0).toISOString();
+      const firstUser = conv.messages.find((m) => m.role === 'user');
+      const short =
+        firstUser?.content?.trim().replace(/\s+/g, ' ').slice(0, 10) ||
+        '对话';
+      const suffix = id.length > 6 ? id.slice(-6) : id;
+      const title = `${short}|${suffix}`;
+      return { id, title, updated_at: last };
+    });
+    return entries
+      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+      .slice(0, limit);
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    if (this.config.mysqlEnabled) {
+      await this.repo.deleteConversation(conversationId);
+      return;
+    }
+    delete this.memoryStore[conversationId];
   }
 }
