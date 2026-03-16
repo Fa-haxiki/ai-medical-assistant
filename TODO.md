@@ -31,22 +31,18 @@
 
 ### 二、前端（聊天体验 / UI / 状态管理）
 
-- [ ] **聊天输入组件化与复用**
-  - 将当前 `ChatInterface` 中的输入区域进一步拆分为独立组件（文本输入 + 图片上传），便于后续单独测试/复用。
+- [x] **聊天输入组件化与复用**
+  - 已将 `ChatInterface` 底部输入区域拆分为独立的 `ChatInput` 组件（负责文本输入、图片上传与预览、发送按钮），便于后续单独测试和复用。
 
-- [ ] **加载与错误提示统一**
-  - 统一 loading / 错误提示的交互：例如顶部 toast 或消息区域内的系统消息，附带重试按钮。
-  - 对多模态和文生图请求的失败做更友好的提示（例如引导用户缩小图片或降低并发）。
+- [x] **加载与错误提示统一**
+  - 已在 `ChatInterface` 中增加全局错误 banner（`.error-message`），所有文本、多模态、文生图和历史加载错误均通过统一的 `handleMessageError` 函数解析后展示，并同步插入系统消息提示。
+  - `handleMessageError` 会优先解析后端统一错误结构（`error` / `message`），否则回退到通用提示，实现对多模态和文生图失败场景更友好的错误说明。
 
-- [ ] **对话管理能力**
+- [x] **对话管理能力**
   - 增加「新建会话」「历史会话列表」「切换会话」入口，而不仅依赖本地存储的单个 conversationId。
   - 为每个会话增加简短标题（首条问题摘要）方便用户识别。
 
-- [ ] **移动端与无障碍优化**
-  - 进一步优化小屏布局（键盘弹出时的滚动与输入区域可见性）。
-  - 为主要交互元素补充 ARIA 标签和键盘操作支持。
-
-### 三、RAG / 知识库相关
+### 三、RAG / 知识库相关（暂不实现）
 
 - [ ] **多文件与分层知识库管理**
   - 在 Chroma 中为不同文件或知识域设置 `metadata`（如 `category`、`version`），支持按类别检索。
@@ -57,13 +53,15 @@
   - 考虑支持 `.doc`、`.pptx` 等常见格式（通过额外解析库或异步预处理服务）。
 
 - [ ] **RAG 质量可观测性**
-  - 在后端日志中记录每次 RAG 检索到的文档标题/片段摘要，便于排查检索结果是否合理。
+  - 在后端日志中记录每次 RAG 检索到的文档标题/片段摘要，便于排查检索结果是否合理（远期目标）。
   - 可选：在前端提供一个「调试模式」，显示 RAG 命中的知识片段（仅开发环境开启）。
 
 ### 四、工程质量与运维
 
 - [ ] **测试与类型检查**
   - 为 Nest 后端关键模块（`ChatService`/`ChatController`、`RagService`、`KnowledgeController`、`MultimodalService` 等）添加单元测试或 e2e 测试。
+    - 已为 `ChatService`/`ChatController` 增加基础单元测试（使用 Jest + `@nestjs/testing`），并通过 `npm test -- chat` 验证。
+    - 已为 `RagService`、`KnowledgeController`、`MultimodalService` 与 `ConversationService`/`ConversationController` 添加基础单元测试（mock Chroma/Embeddings/DashScope/MySQL），分别通过 `npm test -- rag knowledge`、`npm test -- multimodal` 与 `npm test -- conversation` 验证关键分支逻辑与错误处理。
   - 为前端核心逻辑（流式解析、Markdown 渲染、多模态流程）添加至少一轮基础测试。
 
 - [ ] **脚本与一键启动体验**

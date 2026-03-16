@@ -13,15 +13,10 @@ import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 import './ChatInterface.css'
+import { ChatInput } from './ChatInput'
 
 interface ChatInterfaceProps {
   // 可以在这里添加props
-}
-
-// 定义响应类型
-interface ChatResponse {
-  content: string
-  conversationId: string
 }
 
 // 提取为模块级组件，确保流式/首次回答与历史记录均走同一 Markdown 渲染路径
@@ -114,16 +109,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [globalError, setGlobalError] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState<string | undefined>(
     undefined
   )
-  const [useStreamResponse, setUseStreamResponse] = useState<boolean>(true)
+  const [useStreamResponse] = useState<boolean>(true)
   const [currentStreamContent, setCurrentStreamContent] = useState<string>('')
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [conversationList, setConversationList] = useState<ConversationSummary[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refreshConversationList = async () => {
     try {
@@ -153,7 +148,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       console.log(`从本地存储恢复会话ID: ${savedConversationId}`)
       setConversationId(savedConversationId)
       // 加载历史消息
-      loadChatHistory(savedConversationId)
+      void loadChatHistory(savedConversationId)
     } else {
       // 添加欢迎消息
       const welcomeMessage: Message = {
@@ -166,6 +161,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       setMessages([welcomeMessage])
     }
     void refreshConversationList()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // 保存会话ID到本地存储
   useEffect(() => {
@@ -215,16 +211,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const clearSelectedImage = () => {
     setSelectedImage(null)
     setPreviewImage(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
-  // 触发图片选择对话框
-  const triggerImageUpload = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
   }
 
   // 将图片转换为Base64
@@ -270,14 +256,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }
     } catch (error) {
       console.error('加载历史消息失败:', error)
-      // 加载失败时显示错误消息
-      const errorMessage: Message = {
-        role: 'system',
-        content: '加载历史消息失败，但您可以继续新的对话。',
-        timestamp: new Date().toISOString()
-      }
-
-      setMessages([errorMessage])
+      handleMessageError(error)
     }
   }
 
@@ -623,6 +602,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
       }
 
       await refreshConversationList()
+      setGlobalError(null)
       setIsLoading(false)
     } catch (error: any) {
       console.error('处理消息出错:', error)
@@ -633,9 +613,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
 
   // 处理消息错误的辅助函数
   const handleMessageError = (error: any) => {
+    // 解析后端统一错误结构
+    let userMessage = '很抱歉，服务暂时出现问题，请稍后再试。'
+    if (error && typeof error === 'object') {
+      const maybeAxios = error as { response?: { data?: any; status?: number } }
+      const data = maybeAxios.response?.data
+      if (data) {
+        const backendMsg =
+          data.error ||
+          data.message ||
+          (Array.isArray(data.message) ? data.message.join('; ') : '')
+        if (backendMsg) {
+          userMessage = String(backendMsg)
+        }
+      } else if ('message' in error && typeof error.message === 'string') {
+        userMessage = error.message
+      }
+    }
+
+    setGlobalError(userMessage)
+
     // 添加详细的错误消息
     const errorContent = `很抱歉，服务暂时出现问题: ${
-      error.message || '未知错误'
+      userMessage || '未知错误'
     }
 
 如果您需要紧急医疗帮助，请立即联系您的医生或拨打急救电话。`
@@ -793,6 +793,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
         </aside>
 
         <div className="chat-main-content">
+          {globalError && (
+            <div className="error-message" role="alert">
+              {globalError}
+            </div>
+          )}
           <div className="messages-container">
             <ChatMessageList
               messages={messages}
@@ -801,61 +806,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
             />
           </div>
 
-          {/* 图片预览区域 */}
-          {previewImage && (
-            <div className="image-preview-container">
-              <img src={previewImage} alt="预览" className="image-preview" />
-              <button
-                className="clear-image-button"
-                onClick={clearSelectedImage}
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          {/* 确保输入框始终可见 */}
-          <div className="input-container">
-            {/* 隐藏的文件输入 */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
-              style={{ display: 'none' }}
-              ref={fileInputRef}
-            />
-
-            {/* 图片上传按钮 */}
-            <button
-              className="image-upload-button"
-              onClick={triggerImageUpload}
-              disabled={isLoading}
-              style={{ width: '80px' }}
-            >
-              图片
-            </button>
-
-            {/* 文本输入框 */}
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="请输入您的健康问题..."
-              disabled={isLoading}
-              className={selectedImage ? 'with-image' : ''}
-            />
-
-            {/* 发送按钮 */}
-            <button
-              className="send-button"
-              onClick={handleSendMessage}
-              disabled={isLoading || (!input.trim() && !selectedImage)}
-              style={{ width: '120px' }}
-            >
-              {isLoading ? '发送中...' : '发送'}
-            </button>
-          </div>
+          {/* 输入与图片上传组件 */}
+          <ChatInput
+            input={input}
+            isLoading={isLoading}
+            selectedImage={selectedImage}
+            previewImage={previewImage}
+            onInputChange={setInput}
+            onSubmit={handleSendMessage}
+            onImageSelect={handleImageSelect}
+            onClearImage={clearSelectedImage}
+          />
         </div>
       </div>
     </div>
