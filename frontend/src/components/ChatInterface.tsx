@@ -9,101 +9,14 @@ import {
   deleteConversation,
   type ConversationSummary
 } from '../services/chatService'
-import ReactMarkdown from 'react-markdown'
-import rehypeSanitize from 'rehype-sanitize'
-import remarkGfm from 'remark-gfm'
 import './ChatInterface.css'
 import { ChatInput } from './ChatInput'
+import { ChatMessageList } from './ChatMessageList'
+import { ConversationSidebar } from './ConversationSidebar'
 
 interface ChatInterfaceProps {
   // 可以在这里添加props
 }
-
-// 提取为模块级组件，确保流式/首次回答与历史记录均走同一 Markdown 渲染路径
-function MarkdownContent({ content }: { content: string | unknown }) {
-  const safeContent = React.useMemo(() => {
-    if (typeof content === 'string') return content
-    if (content === null || content === undefined) return ''
-    if (Array.isArray(content)) {
-      return content
-        .map((item) => {
-          if (typeof item === 'string') return item
-          if (item && typeof item === 'object' && 'text' in item) return (item as { text: string }).text
-          return JSON.stringify(item)
-        })
-        .join('\n')
-    }
-    if (typeof content === 'object') {
-      if ('text' in content) return String((content as { text: unknown }).text)
-      if ('content' in content) return String((content as { content: unknown }).content)
-      return JSON.stringify(content)
-    }
-    return String(content)
-  }, [content])
-
-  return (
-    <div className="markdown-content">
-      <ReactMarkdown rehypePlugins={[rehypeSanitize]} remarkPlugins={[remarkGfm]}>
-        {safeContent}
-      </ReactMarkdown>
-    </div>
-  )
-}
-
-// 消息列表：用 React.memo 包裹，仅在 messages / isLoading 变化时重渲染，避免输入框 input 变化触发列表重渲染
-const ChatMessageList = React.memo(function ChatMessageList({
-  messages,
-  isLoading,
-  messagesEndRef,
-}: {
-  messages: Message[]
-  isLoading: boolean
-  messagesEndRef: React.RefObject<HTMLDivElement | null>
-}) {
-  return (
-    <>
-      {messages.map((message, index) => {
-        const isLast = index === messages.length - 1
-        return (
-        <div key={index} className={`message ${message.role}`}>
-          <div className="message-bubble">
-            {message.image_url && (
-              <div className="message-image-container">
-                <img
-                  src={message.image_url}
-                  alt="用户上传的图片"
-                  className="message-image"
-                  onClick={() => window.open(message.image_url, '_blank')}
-                />
-              </div>
-            )}
-            {message.role === 'assistant' ? (
-              <MarkdownContent content={message.content ?? ''} />
-            ) : (
-              message.content
-            )}
-          </div>
-          <div className="message-info">
-            {message.role === 'user'
-              ? '您'
-              : message.role === 'system'
-              ? '系统消息'
-              : 'AI医疗助手'}
-            ·
-            {new Date(message.timestamp || '').toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-            {isLoading && isLast && (
-              <div className="loading-bar" aria-hidden="true" />
-            )}
-          </div>
-        </div>
-      )})}
-      <div ref={messagesEndRef} />
-    </>
-  )
-})
 
 const ChatInterface: React.FC<ChatInterfaceProps> = () => {
   const [messages, setMessages] = useState<Message[]>([])
@@ -730,67 +643,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = () => {
     setCurrentStreamContent('')
   }
 
+  const handleSelectConversation = (id: string) => {
+    void loadChatHistory(id)
+  }
+
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id)
+    if (id === conversationId) {
+      startNewConversation()
+    }
+    void refreshConversationList()
+  }
+
   return (
     <div className="chat-container">
       <div className="chat-main">
-        <aside className="conversation-sidebar">
-          <button
-            className="new-conversation-link"
-            onClick={startNewConversation}
-            disabled={isLoading}
-          >
-            ＋ 新建会话
-          </button>
-          <div className="conversation-list-vertical">
-            {conversationList.map((conv) => (
-              <div
-                key={conv.id}
-                className={`conversation-chip-row${
-                  conv.id === conversationId ? ' active' : ''
-                }`}
-              >
-                <button
-                  className="conversation-chip"
-                  onClick={() => loadChatHistory(conv.id)}
-                  disabled={isLoading}
-                  title={conv.id}
-                >
-                  <div className="conversation-chip-title">
-                    {conv.title ||
-                      (conv.id.length > 10 ? conv.id.slice(-10) : conv.id)}
-                  </div>
-                  <div className="conversation-chip-time">
-                    {new Date(conv.updated_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                  <div
-                    className="conversation-chip-delete"
-                    title="删除会话"
-                    onClick={async (e) => {
-                      e.stopPropagation()
-                      if (
-                        !window.confirm(
-                          '确定要删除该会话吗？此操作不可恢复。'
-                        )
-                      )
-                        return
-                      await deleteConversation(conv.id)
-                      if (conv.id === conversationId) {
-                        startNewConversation()
-                      }
-                      void refreshConversationList()
-                    }}
-                  >
-                    ×
-                  </div>
-                </button>
-                
-              </div>
-            ))}
-          </div>
-        </aside>
+        <ConversationSidebar
+          conversations={conversationList}
+          currentConversationId={conversationId}
+          isLoading={isLoading}
+          onNewConversation={startNewConversation}
+          onSelectConversation={handleSelectConversation}
+          onDeleteConversation={handleDeleteConversation}
+        />
 
         <div className="chat-main-content">
           {globalError && (
