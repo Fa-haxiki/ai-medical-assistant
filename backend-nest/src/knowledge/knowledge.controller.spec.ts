@@ -13,6 +13,8 @@ describe('KnowledgeController', () => {
 
   beforeEach(async () => {
     repo = {
+      existsByFilename: jest.fn().mockResolvedValue(false),
+      recordUpload: jest.fn().mockResolvedValue(undefined),
       listRecent: jest.fn().mockResolvedValue([
         {
           id: 1,

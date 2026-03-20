@@ -24,6 +24,15 @@ export class KnowledgeRepository {
     );
   }
 
+  /** 与文档库汇总/列表中的 filename 一致（精确匹配） */
+  async existsByFilename(filename: string): Promise<boolean> {
+    const rows = await this.db.query<{ one: number }>(
+      'SELECT 1 AS one FROM knowledge_files WHERE filename = ? LIMIT 1',
+      [filename],
+    );
+    return rows.length > 0;
+  }
+
   async listRecent(limit = 50): Promise<KnowledgeFileRow[]> {
     const safeLimit = Number.isFinite(limit)
       ? Math.min(Math.max(Math.trunc(limit), 1), 500)

@@ -1,6 +1,6 @@
 # AI医疗助手
 
-基于 React + NestJS + LangChain JS + 通义千问的智能医疗问答系统，支持基于检索增强生成（RAG）的医疗知识问答。
+基于 React + NestJS + LangChain JS + 通义千问的智能医疗问答系统，支持基于检索增强生成（RAG）的医疗知识问答（RAG 向量化默认使用 Ollama `bge-m3`）。
 
 ## 项目简介
 
@@ -65,7 +65,7 @@ AI医疗助手是一个结合了最新人工智能技术的医疗问答系统，
 ### 环境要求
 
 - Node.js 24+（后端）、16+（前端）
-- 通义千问 API 密钥（可在 [阿里云 DashScope](https://dashscope.console.aliyun.com/) 申请）
+- Ollama（本地或远端可访问实例，需可用 `bge-m3` 模型）
 
 ### 后端设置
 
@@ -76,13 +76,19 @@ cd backend-nest
 npm install
 ```
 
-2. 配置环境变量：复制示例并填写 API Key 等（若无示例可从项目根或 `backend-nest` 下新建 `.env`）：
+2. 配置环境变量：复制示例并填写配置（若无示例可从项目根或 `backend-nest` 下新建 `.env`）：
 
 ```bash
-cp .env.example .env   # 若无 .env.example，可手动创建 .env，配置 PORT、HOST、DASHSCOPE_API_KEY、CHROMA_URL、CORS_ALLOW_ORIGINS 等
+cp .env.example .env   # 若无 .env.example，可手动创建 .env，配置 PORT、HOST、OLLAMA_BASE_URL、OLLAMA_EMBEDDING_MODEL、CHROMA_URL、CORS_ALLOW_ORIGINS 等
 ```
 
-3. （可选）启用 RAG：需先启动 Chroma，例如：
+3. （可选）启用 RAG：需先准备 Ollama 模型并启动 Chroma，例如：
+
+```bash
+ollama pull bge-m3
+```
+
+然后启动 Chroma：
 
 ```bash
 docker run -p 8010:8000 chromadb/chroma

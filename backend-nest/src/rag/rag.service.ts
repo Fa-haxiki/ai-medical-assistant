@@ -1,16 +1,17 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Document } from '@langchain/core/documents';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
-import { AlibabaTongyiEmbeddings } from '@langchain/community/embeddings/alibaba_tongyi';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { VectorStoreRetriever } from '@langchain/core/vectorstores';
+import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { OllamaEmbeddings } from '@langchain/ollama';
 import { AppConfigService } from '../config/config.service';
 
 @Injectable()
 export class RagService implements OnModuleInit {
   private readonly logger = new Logger(RagService.name);
   private retriever: VectorStoreRetriever | null = null;
-  private embeddings: AlibabaTongyiEmbeddings | null = null;
+  private embeddings: EmbeddingsInterface | null = null;
 
   constructor(private readonly config: AppConfigService) {}
 
@@ -22,7 +23,7 @@ export class RagService implements OnModuleInit {
     return this.retriever;
   }
 
-  getEmbeddings(): AlibabaTongyiEmbeddings | null {
+  getEmbeddings(): EmbeddingsInterface | null {
     return this.embeddings;
   }
 
@@ -48,7 +49,7 @@ export class RagService implements OnModuleInit {
 
   async addKnowledgeFromText(raw: string, source: string): Promise<number> {
     if (!this.embeddings) {
-      throw new Error('RAG 未启用：嵌入模型未初始化或百炼 API Key 未配置');
+      throw new Error('RAG 未启用：嵌入模型未初始化（Ollama）');
     }
     if (!this.config.chromaUrl) {
       throw new Error('RAG 未启用：未配置 CHROMA_URL/CHROMA_HOST');
@@ -84,19 +85,16 @@ export class RagService implements OnModuleInit {
   }
 
   private async initializeRag(): Promise<VectorStoreRetriever | null> {
-    if (!this.config.dashscopeApiKey) {
-      this.logger.warn('未设置 DASHSCOPE_API_KEY/ALIBABA_API_KEY，RAG 已禁用');
-      return null;
-    }
-
     try {
-      this.embeddings = new AlibabaTongyiEmbeddings({
-        apiKey: this.config.dashscopeApiKey,
-        modelName: 'multimodal-embedding-v1',
+      this.embeddings = new OllamaEmbeddings({
+        baseUrl: this.config.ollamaBaseUrl,
+        model: this.config.ollamaEmbeddingModel,
       });
-      this.logger.log('百炼嵌入模型初始化成功');
+      this.logger.log(
+        `Ollama 嵌入模型初始化成功: provider=${this.config.ragEmbeddingProvider}, model=${this.config.ollamaEmbeddingModel}, baseUrl=${this.config.ollamaBaseUrl}`,
+      );
     } catch (e) {
-      this.logger.warn(`百炼嵌入模型初始化失败: ${String(e)}`);
+      this.logger.warn(`Ollama 嵌入模型初始化失败: ${String(e)}`);
       return null;
     }
 
@@ -123,7 +121,9 @@ export class RagService implements OnModuleInit {
         return null;
       }
 
-      this.logger.log(`复用已有 Chroma 集合，文档数: ${docCount}`);
+      this.logger.log(
+        `复用已有 Chroma 集合: collection=${this.config.chromaCollectionName}, 文档数=${docCount}`,
+      );
 
       this.retriever = vectorStore.asRetriever({ k: this.config.rerankTopK });
       this.logger.log('Chroma 向量库与 RAG 检索器初始化成功');
@@ -131,16 +131,6 @@ export class RagService implements OnModuleInit {
     } catch (e) {
       const msg = (e as Error)?.message ?? String(e);
       this.logger.warn(`初始化 RAG 失败: ${msg}`);
-      if (
-        msg.includes('FreeTierOnly') ||
-        msg.includes('free tier') ||
-        msg.includes('quota') ||
-        msg.includes('额度')
-      ) {
-        this.logger.warn(
-          '→ 阿里云百炼免费额度已用尽。请在百炼控制台关闭「仅用免费」或开通按量付费后重试。当前将仅使用大模型对话（无知识库检索）。',
-        );
-      }
       return null;
     }
   }

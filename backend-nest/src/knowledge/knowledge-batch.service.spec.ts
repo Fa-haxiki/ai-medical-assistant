@@ -66,4 +66,23 @@ describe('KnowledgeBatchService', () => {
       service.createZipIngestJob(Buffer.from('x'), 'batch.pdf'),
     ).toThrow('仅支持 .zip 压缩文件');
   });
+
+  it('should skip macOS ._ and __MACOSX junk pdf entries', async () => {
+    const zipBuffer = buildZipBuffer([
+      { name: 'real.pdf', content: 'x' },
+      { name: '._real.pdf', content: 'not-a-pdf' },
+      { name: '__MACOSX/folder/._doc.pdf', content: 'junk' },
+    ]);
+    const job = service.createZipIngestJob(zipBuffer, 'batch.zip');
+    await new Promise((r) => setTimeout(r, 30));
+    const done = service.getJob(job.jobId);
+    expect(done?.totalFiles).toBe(1);
+    expect(done?.successCount).toBe(1);
+    expect(done?.failedCount).toBe(0);
+    expect(ingestService.ingestBuffer).toHaveBeenCalledTimes(1);
+    expect(ingestService.ingestBuffer).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'real.pdf',
+    );
+  });
 });

@@ -109,12 +109,11 @@ export class ChatService {
     chatHistory: ChatMessage[] = [],
     modelName = 'qwen-turbo',
   ): Promise<string> {
-    const model = this.createChatModel(modelName);
-    const retriever = this.ragService.getRetriever();
-
-    this.logger.log(`[smartAnswer] 调用模型: ${modelName}`);
-
     try {
+      const model = this.createChatModel(modelName);
+      const retriever = this.ragService.getRetriever();
+      this.logger.log(`[smartAnswer] 调用模型: ${modelName}`);
+
       if (!retriever) {
         this.logger.log('[LLM] 纯模型回答（RAG 未启用）');
         const messages = this.toLangChainMessages(chatHistory);

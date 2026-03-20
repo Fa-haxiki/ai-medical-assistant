@@ -25,6 +25,18 @@ export class AppConfigService {
     return keyFromDashscope || keyFromAlibaba || '';
   }
 
+  get ragEmbeddingProvider(): string {
+    return this.config.get<string>('RAG_EMBEDDING_PROVIDER') ?? 'ollama';
+  }
+
+  get ollamaBaseUrl(): string {
+    return this.config.get<string>('OLLAMA_BASE_URL') ?? 'http://127.0.0.1:11434';
+  }
+
+  get ollamaEmbeddingModel(): string {
+    return this.config.get<string>('OLLAMA_EMBEDDING_MODEL') ?? 'bge-m3';
+  }
+
   get chromaUrl(): string {
     return (
       this.config.get<string>('CHROMA_URL') ??

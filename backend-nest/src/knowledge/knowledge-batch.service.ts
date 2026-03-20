@@ -82,7 +82,9 @@ export class KnowledgeBatchService {
         .getEntries()
         .filter((e) => !e.isDirectory)
         .filter((e) => e.entryName.toLowerCase().endsWith('.pdf'))
-        .filter((e) => !this.isUnsafeEntryName(e.entryName));
+        .filter((e) => !this.isUnsafeEntryName(e.entryName))
+        // macOS 打包常见：AppleDouble 资源分叉（._文件名）与 __MACOSX 目录，非真实 PDF
+        .filter((e) => !this.isMacOsJunkPdfEntry(e.entryName));
 
       if (!entries.length) {
         throw new Error('压缩包中未找到可处理的 PDF 文件');
@@ -147,6 +149,14 @@ export class KnowledgeBatchService {
 
   private isUnsafeEntryName(name: string): boolean {
     return name.includes('..') || name.startsWith('/') || name.startsWith('\\');
+  }
+
+  /** 跳过 Finder/zip 在 macOS 上产生的元数据条目，避免 pdf-parse 报 Invalid PDF structure */
+  private isMacOsJunkPdfEntry(entryName: string): boolean {
+    const norm = entryName.replace(/\\/g, '/');
+    if (norm.includes('__MACOSX/')) return true;
+    const base = norm.split('/').pop() ?? '';
+    return base.startsWith('._');
   }
 
   private generateJobId(): string {

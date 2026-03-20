@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import path from 'node:path';
 import { RagService } from '../rag/rag.service';
 import { KnowledgeRepository } from './knowledge.repository';
+import { AppConfigService } from '../config/config.service';
 
 // mammoth 为 CommonJS，用 require 加载
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
@@ -16,9 +17,12 @@ export type KnowledgeIngestResult = {
 
 @Injectable()
 export class KnowledgeIngestService {
+  private readonly logger = new Logger(KnowledgeIngestService.name);
+
   constructor(
     private readonly ragService: RagService,
     private readonly knowledgeRepo: KnowledgeRepository,
+    private readonly config: AppConfigService,
   ) {}
 
   async ingestBuffer(
@@ -26,6 +30,28 @@ export class KnowledgeIngestService {
     originalName: string,
   ): Promise<KnowledgeIngestResult> {
     const normalizedName = this.normalizeFilename(originalName);
+
+    if (this.config.mysqlEnabled) {
+      try {
+        const exists = await this.knowledgeRepo.existsByFilename(normalizedName);
+        if (exists) {
+          throw new Error(
+            `文档库中已存在同名文件「${normalizedName}」，如需覆盖请先通过删除接口移除该文件记录并清理向量后再上传。`,
+          );
+        }
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          e.message.includes('文档库中已存在同名文件')
+        ) {
+          throw e;
+        }
+        this.logger.warn(
+          `检查文件名是否重复时失败，将跳过去重校验: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+
     const ext = path.extname(normalizedName).toLowerCase();
     const raw = await this.extractText(ext, fileBuffer);
 

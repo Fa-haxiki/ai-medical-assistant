@@ -9,8 +9,8 @@ jest.mock('@langchain/community/vectorstores/chroma', () => ({
   },
 }));
 
-jest.mock('@langchain/community/embeddings/alibaba_tongyi', () => ({
-  AlibabaTongyiEmbeddings: jest.fn().mockImplementation(() => ({})),
+jest.mock('@langchain/ollama', () => ({
+  OllamaEmbeddings: jest.fn().mockImplementation(() => ({})),
 }));
 
 const { Chroma } = jest.requireMock(
@@ -23,9 +23,12 @@ describe('RagService', () => {
 
   beforeEach(async () => {
     config = {
-      dashscopeApiKey: 'test-key',
+      ragEmbeddingProvider: 'ollama',
+      ollamaBaseUrl: 'http://127.0.0.1:11434',
+      ollamaEmbeddingModel: 'bge-m3',
       chromaUrl: 'http://localhost:8010',
       chromaCollectionName: 'test-collection',
+      rerankTopK: 20,
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -57,6 +60,13 @@ describe('RagService', () => {
     await expect(
       service.addKnowledgeFromText('abc', 'test.txt'),
     ).rejects.toThrow('RAG 未启用');
+  });
+
+  it('initializeRag should return null when Chroma.fromExistingCollection throws', async () => {
+    Chroma.fromExistingCollection.mockRejectedValueOnce(new Error('connect failed'));
+    const out = await service.onModuleInit();
+    expect(out).toBeUndefined();
+    expect(service.getRetriever()).toBeNull();
   });
 
   it('addKnowledgeFromText should throw when text is empty', async () => {
