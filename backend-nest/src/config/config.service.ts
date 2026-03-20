@@ -65,6 +65,63 @@ export class AppConfigService {
     return this.config.get<string>('CHROMA_COLLECTION') ?? 'medical-knowledge';
   }
 
+  get rerankEnabled(): boolean {
+    const v = this.config.get<string>('RERANK_ENABLED');
+    if (v === undefined) return true;
+    return ['1', 'true', 'yes', 'on'].includes(v.toLowerCase());
+  }
+
+  get rerankProvider(): string {
+    return this.config.get<string>('RERANK_PROVIDER') ?? 'dashscope';
+  }
+
+  get rerankModel(): string {
+    return this.config.get<string>('RERANK_MODEL') ?? 'qwen3-vl-rerank';
+  }
+
+  get rerankTopK(): number {
+    const v = this.config.get<string>('RERANK_TOP_K');
+    const parsed = v ? parseInt(v, 10) : 20;
+    return Number.isFinite(parsed) ? Math.max(1, parsed) : 20;
+  }
+
+  get rerankTopN(): number {
+    const v = this.config.get<string>('RERANK_TOP_N');
+    const parsed = v ? parseInt(v, 10) : 5;
+    const safe = Number.isFinite(parsed) ? Math.max(1, parsed) : 5;
+    return Math.min(safe, this.rerankTopK);
+  }
+
+  get rerankTimeoutMs(): number {
+    const v = this.config.get<string>('RERANK_TIMEOUT_MS');
+    const parsed = v ? parseInt(v, 10) : 1200;
+    return Number.isFinite(parsed) ? Math.max(100, parsed) : 1200;
+  }
+
+  get ragContextMaxChars(): number {
+    const v = this.config.get<string>('RAG_CONTEXT_MAX_CHARS');
+    const parsed = v ? parseInt(v, 10) : 7000;
+    return Number.isFinite(parsed) ? Math.max(1000, parsed) : 7000;
+  }
+
+  get maxZipFileCount(): number {
+    const v = this.config.get<string>('MAX_ZIP_FILE_COUNT');
+    const parsed = v ? parseInt(v, 10) : 200;
+    return Number.isFinite(parsed) ? Math.max(1, parsed) : 200;
+  }
+
+  get maxZipUncompressedBytes(): number {
+    const v = this.config.get<string>('MAX_ZIP_UNCOMPRESSED_MB');
+    const mb = v ? parseFloat(v) : 200;
+    return Math.floor(Math.max(1, mb) * 1024 * 1024);
+  }
+
+  get zipJobTimeoutMs(): number {
+    const v = this.config.get<string>('ZIP_JOB_TIMEOUT_MS');
+    const parsed = v ? parseInt(v, 10) : 300000;
+    return Number.isFinite(parsed) ? Math.max(1000, parsed) : 300000;
+  }
+
   get knowledgePath(): string | null {
     const explicit = this.config.get<string>('KNOWLEDGE_PATH');
     if (explicit) {

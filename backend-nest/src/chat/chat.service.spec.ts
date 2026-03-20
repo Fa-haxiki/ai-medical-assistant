@@ -2,11 +2,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChatService } from './chat.service';
 import { AppConfigService } from '../config/config.service';
 import { RagService } from '../rag/rag.service';
+import { RerankService } from '../rag/rerank.service';
 
 describe('ChatService', () => {
   let service: ChatService;
+  const ragMock = {
+    getRetriever: jest.fn().mockReturnValue(null),
+    formatDocs: jest.fn(),
+  };
 
   beforeEach(async () => {
+    ragMock.getRetriever.mockReset();
+    ragMock.getRetriever.mockReturnValue(null);
+    ragMock.formatDocs.mockReset();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatService,
@@ -15,13 +23,17 @@ describe('ChatService', () => {
           useValue: {
             dashscopeApiKey: 'test-key',
             chromaCollectionName: 'test-collection',
+            ragContextMaxChars: 7000,
           },
         },
         {
           provide: RagService,
+          useValue: ragMock,
+        },
+        {
+          provide: RerankService,
           useValue: {
-            getRetriever: jest.fn().mockReturnValue(null),
-            formatDocs: jest.fn(),
+            rerank: jest.fn(async (_q: string, docs: unknown[]) => docs),
           },
         },
       ],
@@ -53,6 +65,14 @@ describe('ChatService', () => {
   });
 
   it('smartAnswer should fall back to pure model answer when RAG is disabled', async () => {
+    const answer = await service.smartAnswer('测试问题', []);
+    expect(answer).toBe('mock response');
+  });
+
+  it('smartAnswer should fall back to pure model answer when retriever returns empty docs', async () => {
+    ragMock.getRetriever.mockReturnValue({
+      invoke: jest.fn().mockResolvedValue([]),
+    });
     const answer = await service.smartAnswer('测试问题', []);
     expect(answer).toBe('mock response');
   });

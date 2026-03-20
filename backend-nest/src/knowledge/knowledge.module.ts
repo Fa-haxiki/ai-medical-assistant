@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { KnowledgeController } from './knowledge.controller';
 import { RagModule } from '../rag/rag.module';
 import { KnowledgeRepository } from './knowledge.repository';
+import { KnowledgeIngestService } from './knowledge-ingest.service';
+import { KnowledgeBatchService } from './knowledge-batch.service';
+import { AppConfigService } from '../config/config.service';
 
 @Module({
   imports: [
@@ -24,8 +27,13 @@ import { KnowledgeRepository } from './knowledge.repository';
     }),
   ],
   controllers: [KnowledgeController],
-  providers: [KnowledgeRepository],
-  exports: [KnowledgeRepository],
+  providers: [
+    KnowledgeRepository,
+    KnowledgeIngestService,
+    KnowledgeBatchService,
+    AppConfigService,
+  ],
+  exports: [KnowledgeRepository, KnowledgeIngestService, KnowledgeBatchService],
 })
 export class KnowledgeModule {}
 

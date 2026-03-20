@@ -476,3 +476,81 @@ export async function uploadKnowledgeFile(
     return { error: '上传知识文件失败，请稍后重试。' };
   }
 }
+
+export type ZipUploadJobResult = {
+  filename: string;
+  status: 'success' | 'failed';
+  chunks: number;
+  error?: string;
+};
+
+export type ZipUploadJob = {
+  jobId: string;
+  status: 'queued' | 'processing' | 'done' | 'failed';
+  zipFilename?: string;
+  totalFiles?: number;
+  successCount?: number;
+  failedCount?: number;
+  totalChunks?: number;
+  results?: ZipUploadJobResult[];
+  error?: string;
+};
+
+export async function uploadKnowledgeZip(
+  file: File,
+): Promise<{ success?: boolean; jobId?: string; status?: string; error?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await axios.post(`${API_BASE_URL}/knowledge/upload-zip`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('上传知识 ZIP 失败:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      return error.response.data;
+    }
+    return { error: '上传知识 ZIP 失败，请稍后重试。' };
+  }
+}
+
+export async function getKnowledgeUploadJob(jobId: string): Promise<ZipUploadJob> {
+  const response = await axios.get(`${API_BASE_URL}/knowledge/upload-jobs/${jobId}`);
+  return response.data;
+}
+
+export type KnowledgeStats = {
+  total_files: number;
+  total_chunks: number;
+  last_uploaded_at: string | null;
+};
+
+export type KnowledgeFileItem = {
+  id: number;
+  filename: string;
+  tag: string | null;
+  chunk_count: number;
+  created_at: string;
+};
+
+export async function getKnowledgeStats(): Promise<KnowledgeStats> {
+  const response = await axios.get(`${API_BASE_URL}/knowledge/stats`);
+  return (
+    response.data?.stats ?? {
+      total_files: 0,
+      total_chunks: 0,
+      last_uploaded_at: null,
+    }
+  );
+}
+
+export async function listKnowledgeFiles(limit = 20): Promise<KnowledgeFileItem[]> {
+  const response = await axios.get(`${API_BASE_URL}/knowledge/files`, {
+    params: { limit },
+  });
+  return (response.data?.files ?? []) as KnowledgeFileItem[];
+}

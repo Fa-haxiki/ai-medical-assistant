@@ -1,7 +1,10 @@
 .knowledge-upload-container {
+  flex: auto !important;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100vh - var(--main-top-bar-height, 48px) - 30px);
+  min-height: 0;
+  overflow: auto !important;
   padding: 20px 24px;
   background: linear-gradient(135deg, #f8fbfd 0%, #eef5ff 100%);
 }
@@ -29,6 +32,90 @@
   flex-direction: column;
   gap: 12px;
   text-align: left;
+}
+
+.knowledge-upload-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.summary-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.summary-refresh-button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.summary-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-item {
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.summary-files p {
+  margin: 4px 0 0;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.summary-files ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.summary-files li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+}
+
+.summary-files li:last-child {
+  border-bottom: none;
+}
+
+.empty-files {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 0.85rem;
 }
 
 .file-input-row input[type='file'] {
@@ -103,6 +190,32 @@
   border: 1px solid #fecaca;
 }
 
+.zip-job-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.88rem;
+  display: grid;
+  gap: 4px;
+}
+
+.zip-failed-list {
+  margin-top: 6px;
+  color: #7f1d1d;
+}
+
+.zip-failed-list p {
+  margin: 0;
+}
+
+.zip-failed-list ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 @media (max-width: 768px) {
   .knowledge-upload-container {
     padding: 12px;
@@ -110,6 +223,15 @@
 
   .knowledge-upload-card {
     padding: 14px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-files li {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }
 

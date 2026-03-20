@@ -25,9 +25,11 @@ export class KnowledgeRepository {
   }
 
   async listRecent(limit = 50): Promise<KnowledgeFileRow[]> {
+    const safeLimit = Number.isFinite(limit)
+      ? Math.min(Math.max(Math.trunc(limit), 1), 500)
+      : 50;
     const rows = await this.db.query<KnowledgeFileRow>(
-      'SELECT id, filename, tag, chunk_count, created_at FROM knowledge_files ORDER BY created_at DESC LIMIT ?',
-      [limit],
+      `SELECT id, filename, tag, chunk_count, created_at FROM knowledge_files ORDER BY created_at DESC LIMIT ${safeLimit}`,
     );
     return rows;
   }

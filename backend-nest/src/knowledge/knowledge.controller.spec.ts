@@ -1,21 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Express } from 'express';
 import { KnowledgeController } from './knowledge.controller';
-import { RagService } from '../rag/rag.service';
 import { KnowledgeRepository } from './knowledge.repository';
+import { KnowledgeIngestService } from './knowledge-ingest.service';
+import { KnowledgeBatchService } from './knowledge-batch.service';
 
 describe('KnowledgeController', () => {
   let controller: KnowledgeController;
-  let ragService: jest.Mocked<RagService>;
   let repo: jest.Mocked<KnowledgeRepository>;
+  let ingestService: jest.Mocked<KnowledgeIngestService>;
+  let batchService: jest.Mocked<KnowledgeBatchService>;
 
   beforeEach(async () => {
-    ragService = {
-      addKnowledgeFromText: jest.fn().mockResolvedValue(10),
-    } as any;
-
     repo = {
-      recordUpload: jest.fn().mockResolvedValue(undefined),
       listRecent: jest.fn().mockResolvedValue([
         {
           id: 1,
@@ -32,12 +29,31 @@ describe('KnowledgeController', () => {
       }),
       deleteByFilename: jest.fn().mockResolvedValue(1),
     } as any;
+    ingestService = {
+      ingestBuffer: jest.fn().mockResolvedValue({
+        success: true,
+        filename: 'a.md',
+        chunks: 10,
+        message: 'ok',
+      }),
+    } as any;
+    batchService = {
+      createZipIngestJob: jest.fn().mockReturnValue({
+        jobId: 'job_1',
+        status: 'queued',
+      }),
+      getJob: jest.fn().mockReturnValue({
+        jobId: 'job_1',
+        status: 'done',
+      }),
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [KnowledgeController],
       providers: [
-        { provide: RagService, useValue: ragService },
         { provide: KnowledgeRepository, useValue: repo },
+        { provide: KnowledgeIngestService, useValue: ingestService },
+        { provide: KnowledgeBatchService, useValue: batchService },
       ],
     }).compile();
 
@@ -54,6 +70,9 @@ describe('KnowledgeController', () => {
   });
 
   it('uploadKnowledge should reject unsupported extension', async () => {
+    ingestService.ingestBuffer.mockRejectedValueOnce(
+      new Error('目前仅支持 .md、.txt、.pdf 和 .docx 文件'),
+    );
     const file = {
       originalname: 'a.exe',
       buffer: Buffer.from('abc'),
@@ -72,16 +91,31 @@ describe('KnowledgeController', () => {
     } as Express.Multer.File;
 
     const res = await controller.uploadKnowledge(file);
-    expect(ragService.addKnowledgeFromText).toHaveBeenCalledWith(
-      '# hello',
+    expect(ingestService.ingestBuffer).toHaveBeenCalledWith(
+      Buffer.from('# hello'),
       'a.md',
     );
-    expect(repo.recordUpload).toHaveBeenCalledWith('a.md', 10);
     expect(res).toMatchObject({
       success: true,
       filename: 'a.md',
       chunks: 10,
     });
+  });
+
+  it('uploadZipKnowledge should create async job', async () => {
+    const file = {
+      originalname: 'batch.zip',
+      buffer: Buffer.from('zip-content'),
+    } as Express.Multer.File;
+    const res = await controller.uploadZipKnowledge(file);
+    expect(batchService.createZipIngestJob).toHaveBeenCalled();
+    expect(res).toEqual({ success: true, jobId: 'job_1', status: 'queued' });
+  });
+
+  it('getUploadJob should return not found when missing', async () => {
+    batchService.getJob.mockReturnValueOnce(null as any);
+    const res = await controller.getUploadJob('missing');
+    expect(res).toEqual({ error: '任务不存在' });
   });
 
   it('files() should return list from repository', async () => {

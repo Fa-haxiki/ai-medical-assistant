@@ -10,6 +10,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { AppConfigService } from '../config/config.service';
 import { RagService } from '../rag/rag.service';
+import { RerankService } from '../rag/rerank.service';
 import { ChatMessage } from './chat.types';
 import { SYSTEM_PROMPT, DEFAULT_TEMPLATE, RAG_TEMPLATE } from '../prompts';
 
@@ -20,6 +21,7 @@ export class ChatService {
   constructor(
     private readonly config: AppConfigService,
     private readonly ragService: RagService,
+    private readonly rerankService: RerankService,
   ) {}
 
   private buildHistoryContext(chatHistory: ChatMessage[]): string {
@@ -53,6 +55,12 @@ export class ChatService {
       model: modelName,
       modelName,
     });
+  }
+
+  private trimContextByBudget(context: string): string {
+    const maxChars = this.config.ragContextMaxChars;
+    if (context.length <= maxChars) return context;
+    return context.slice(0, maxChars);
   }
 
   getFallbackResponse(
@@ -128,8 +136,15 @@ export class ChatService {
           : String(res.content);
       }
 
-      this.logger.log(`[RAG] 检索增强回答（命中文档数）: ${docs.length}`);
-      const context = this.ragService.formatDocs(docs);
+      const rerankStartedAt = Date.now();
+      const rerankedDocs = await this.rerankService.rerank(question, docs);
+      const rerankLatency = Date.now() - rerankStartedAt;
+      this.logger.log(
+        `[RAG] 检索增强回答（召回/重排后）: ${docs.length}/${rerankedDocs.length}, rerank耗时: ${rerankLatency}ms`,
+      );
+      const rawContext = this.ragService.formatDocs(rerankedDocs);
+      const context = this.trimContextByBudget(rawContext);
+      this.logger.log(`[RAG] 最终上下文长度: ${context.length}`);
       const historyContext = this.buildHistoryContext(chatHistory);
       const ragPrompt = ChatPromptTemplate.fromTemplate(RAG_TEMPLATE);
       const chain = ragPrompt.pipe(model).pipe(new StringOutputParser());

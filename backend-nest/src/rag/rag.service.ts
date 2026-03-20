@@ -92,7 +92,7 @@ export class RagService implements OnModuleInit {
     try {
       this.embeddings = new AlibabaTongyiEmbeddings({
         apiKey: this.config.dashscopeApiKey,
-        modelName: 'text-embedding-v2',
+        modelName: 'multimodal-embedding-v1',
       });
       this.logger.log('百炼嵌入模型初始化成功');
     } catch (e) {
@@ -125,7 +125,7 @@ export class RagService implements OnModuleInit {
 
       this.logger.log(`复用已有 Chroma 集合，文档数: ${docCount}`);
 
-      this.retriever = vectorStore.asRetriever({ k: 3 });
+      this.retriever = vectorStore.asRetriever({ k: this.config.rerankTopK });
       this.logger.log('Chroma 向量库与 RAG 检索器初始化成功');
       return this.retriever;
     } catch (e) {
