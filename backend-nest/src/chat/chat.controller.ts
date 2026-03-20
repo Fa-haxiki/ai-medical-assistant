@@ -13,6 +13,7 @@ import type { Request, Response } from 'express';
 import { ChatService } from './chat.service';
 import { ChatMessage } from './chat.types';
 import { ConversationService } from '../conversation/conversation.service';
+import { AppConfigService } from '../config/config.service';
 import { ChatRequestDto } from './dto/chat-request.dto';
 import { ChatBodyLimitGuard } from '../common/guards/body-limit.guard';
 import { ConcurrencyGuard } from '../common/guards/concurrency.guard';
@@ -38,6 +39,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly conversationService: ConversationService,
+    private readonly config: AppConfigService,
   ) {}
 
   @Post('chat')
@@ -129,10 +131,7 @@ export class ChatController {
       );
     } catch (e) {
       const err = e as Error;
-      const fallback = this.chatService.getFallbackResponse(
-        message,
-        history,
-      );
+      const fallback = this.config.chatFallbackGeneralTemplate;
       for (const char of fallback) sendMessageChunk(char);
       await this.conversationService.appendMessage(
         conversationId,

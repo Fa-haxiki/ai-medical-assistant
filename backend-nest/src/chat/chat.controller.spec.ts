@@ -11,7 +11,6 @@ describe('ChatController', () => {
   beforeEach(() => {
     chatService = {
       smartAnswer: jest.fn().mockResolvedValue('answer from model'),
-      getFallbackResponse: jest.fn().mockReturnValue('fallback'),
     } as any;
 
     conversationService = {
@@ -19,7 +18,11 @@ describe('ChatController', () => {
       appendMessage: jest.fn().mockResolvedValue(undefined),
     } as any;
 
-    controller = new ChatController(chatService as any, conversationService as any);
+    controller = new ChatController(
+      chatService as any,
+      conversationService as any,
+      { chatFallbackGeneralTemplate: 'fallback' } as any,
+    );
   });
 
   it('should be defined', () => {

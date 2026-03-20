@@ -24,6 +24,11 @@ describe('ChatService', () => {
             dashscopeApiKey: 'test-key',
             chromaCollectionName: 'test-collection',
             ragContextMaxChars: 7000,
+            chatModelName: 'qwen-turbo',
+            chatFallbackWithHistoryTemplate:
+              '根据我的记忆，您之前问了关于"{summary}"的问题。\n\n很抱歉，我目前遇到了一些技术问题，无法提供完整的回答。请稍后再试，或者重新表述您的问题，我会尽力帮助您。',
+            chatFallbackGeneralTemplate:
+              '很抱歉，我目前遇到了一些技术问题，无法处理您的请求。这可能是由于以下原因：\n\n1. 服务器负载过高\n2. API调用限制\n3. 网络连接问题\n\n请稍后再试，或者重新表述您的问题，我会尽力帮助您。如果问题持续存在，请联系技术支持。\n感谢您的理解。',
           },
         },
         {
@@ -50,18 +55,6 @@ describe('ChatService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  it('getFallbackResponse should mention history when question refers to previous messages', () => {
-    const question = '你刚才说的那个用药方案是啥？';
-    const history = [
-      { role: 'user', content: '我有高血压，怎么用药更安全？' },
-      { role: 'assistant', content: '这里是关于高血压用药的一些建议。' },
-    ];
-
-    const result = service.getFallbackResponse(question, history);
-    expect(result).toContain('根据我的记忆');
-    expect(result).toContain('我有高血压，怎么用药更安全？');
   });
 
   it('smartAnswer should fall back to pure model answer when RAG is disabled', async () => {

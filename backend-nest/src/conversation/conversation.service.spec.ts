@@ -73,7 +73,7 @@ describe('ConversationService', () => {
   });
 
   it('appendMessage should delegate to repo when mysql enabled and set title on first user message', async () => {
-    config.mysqlEnabled = true;
+    (config as any).mysqlEnabled = true;
     await service.appendMessage('conv-mysql', 'user', '首条问题内容');
     expect(repo.appendMessage).toHaveBeenCalledWith(
       'conv-mysql',

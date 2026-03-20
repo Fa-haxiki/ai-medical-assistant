@@ -116,6 +116,27 @@ export class AppConfigService {
     return Number.isFinite(parsed) ? Math.max(1000, parsed) : 7000;
   }
 
+  get chatModelName(): string {
+    return this.config.get<string>('CHAT_MODEL_NAME') ?? 'qwen-turbo';
+  }
+
+  /** 聊天兜底：涉及历史问题时的提示模板 */
+  get chatFallbackWithHistoryTemplate(): string {
+    return `根据我的记忆，您之前问了关于"{summary}"的问题。\n\n很抱歉，我目前遇到了一些技术问题，无法提供完整的回答。请稍后再试，或者重新表述您的问题，我会尽力帮助您。`;
+  }
+
+  /** 聊天兜底：通用技术问题提示模板 */
+  get chatFallbackGeneralTemplate(): string {
+    return `很抱歉，我目前遇到了一些技术问题，无法处理您的请求。这可能是由于以下原因：
+
+1. 服务器负载过高
+2. API调用限制
+3. 网络连接问题
+
+请稍后再试，或者重新表述您的问题，我会尽力帮助您。如果问题持续存在，请联系技术支持。
+感谢您的理解。`;
+  }
+
   get maxZipFileCount(): number {
     const v = this.config.get<string>('MAX_ZIP_FILE_COUNT');
     const parsed = v ? parseInt(v, 10) : 200;

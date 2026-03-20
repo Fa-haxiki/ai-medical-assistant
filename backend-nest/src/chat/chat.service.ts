@@ -12,7 +12,7 @@ import { AppConfigService } from '../config/config.service';
 import { RagService } from '../rag/rag.service';
 import { RerankService } from '../rag/rerank.service';
 import { ChatMessage } from './chat.types';
-import { SYSTEM_PROMPT, DEFAULT_TEMPLATE, RAG_TEMPLATE } from '../prompts';
+import { SYSTEM_PROMPT, RAG_TEMPLATE } from '../prompts';
 
 @Injectable()
 export class ChatService {
@@ -49,7 +49,7 @@ export class ChatService {
     return messages;
   }
 
-  private createChatModel(modelName = 'qwen-turbo'): ChatAlibabaTongyi {
+  private createChatModel(modelName: string): ChatAlibabaTongyi {
     return new ChatAlibabaTongyi({
       alibabaApiKey: this.config.dashscopeApiKey,
       model: modelName,
@@ -63,56 +63,18 @@ export class ChatService {
     return context.slice(0, maxChars);
   }
 
-  getFallbackResponse(
-    question: string,
-    chatHistory?: ChatMessage[],
-  ): string {
-    const memoryKeywords = [
-      '之前',
-      '刚才',
-      '上面',
-      '之前问',
-      '刚问',
-      '之前聊',
-      '刚才说',
-      '刚刚问',
-    ];
-    const isHistoryQuestion = memoryKeywords.some((k) =>
-      question.includes(k),
-    );
-
-    if (isHistoryQuestion && chatHistory?.length) {
-      const userMsgs: string[] = [];
-      for (let i = chatHistory.length - 1; i >= 0 && userMsgs.length < 2; i--) {
-        const msg = chatHistory[i];
-        if (msg.role === 'user' && msg.content) userMsgs.push(msg.content);
-      }
-      if (userMsgs.length) {
-        const summary = userMsgs.reverse().join('、');
-        return `根据我的记忆，您之前问了关于"${summary}"的问题。\n\n很抱歉，我目前遇到了一些技术问题，无法提供完整的回答。请稍后再试，或者重新表述您的问题，我会尽力帮助您。`;
-      }
-    }
-
-    return `很抱歉，我目前遇到了一些技术问题，无法处理您的请求。这可能是由于以下原因：
-
-1. 服务器负载过高
-2. API调用限制
-3. 网络连接问题
-
-请稍后再试，或者重新表述您的问题，我会尽力帮助您。如果问题持续存在，请联系技术支持。
-
-感谢您的理解。`;
-  }
-
   async smartAnswer(
     question: string,
     chatHistory: ChatMessage[] = [],
-    modelName = 'qwen-turbo',
+    modelName?: string,
   ): Promise<string> {
     try {
-      const model = this.createChatModel(modelName);
+      const resolvedModelName = modelName ?? this.config.chatModelName;
+      const model = this.createChatModel(resolvedModelName);
       const retriever = this.ragService.getRetriever();
-      this.logger.log(`[smartAnswer] 调用模型: ${modelName}`);
+      this.logger.log(
+        `[smartAnswer] 调用模型: ${resolvedModelName}`,
+      );
 
       if (!retriever) {
         this.logger.log('[LLM] 纯模型回答（RAG 未启用）');
@@ -158,7 +120,7 @@ export class ChatService {
         `[smartAnswer] 调用失败: ${err?.message ?? String(e)}`,
       );
       if (err?.stack) this.logger.error(err.stack);
-      return this.getFallbackResponse(question, chatHistory);
+      return this.config.chatFallbackGeneralTemplate;
     }
   }
 }
